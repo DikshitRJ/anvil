@@ -1,0 +1,10 @@
+dist
+node_modules
+docs/problem
+*.vsix
+package-lock.json
+openspec
+.claude
+coverage
+.vscode-test
+docs

@@ -1,0 +1,242 @@
+{
+  "name": "anvil",
+  "displayName": "Anvil — TrueForge Coding Agent",
+  "description": "A VS Code coding agent whose agent loop runs on TrueForge, with per-hunk review, context engine and model relay.",
+  "version": "0.1.0",
+  "publisher": "anvil-dev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DikshitRJ/anvil"
+  },
+  "engines": {
+    "vscode": "^1.95.0",
+    "node": ">=20"
+  },
+  "main": "./dist/extension.js",
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:vscode": "node ./test/vscode/runTests.js",
+    "package": "vsce package --no-dependencies -o anvil.vsix",
+    "setup:trueforge": "node scripts/setup-trueforge.mjs",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@truefoundry/trueforge-sdk": "^0.185.0",
+    "diff": "^9.0.0",
+    "ignore": "^7.0.16",
+    "picomatch": "^4.0.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/diff": "^7.0.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.43",
+    "@types/picomatch": "^4.0.3",
+    "@types/vscode": "~1.95.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "mocha": "^12.0.3",
+    "prettier": "^3.10.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^3.2.7"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "anvil",
+          "title": "Anvil",
+          "icon": "media/anvil.svg"
+        }
+      ]
+    },
+    "views": {
+      "anvil": [
+        {
+          "type": "webview",
+          "id": "anvil.panel",
+          "name": "Agent"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "anvil.inlineEdit",
+        "title": "Inline Edit Selection",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.cancel",
+        "title": "Cancel Running Task",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.newChat",
+        "title": "New Chat",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.setup",
+        "title": "Set Up TrueForge Integration",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.doctor",
+        "title": "Run Doctor",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.undoLast",
+        "title": "Undo Last Applied Change",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.review.acceptHunk",
+        "title": "Accept Hunk",
+        "category": "Anvil",
+        "icon": "$(check)"
+      },
+      {
+        "command": "anvil.review.rejectHunk",
+        "title": "Reject Hunk",
+        "category": "Anvil",
+        "icon": "$(close)"
+      },
+      {
+        "command": "anvil.review.acceptAll",
+        "title": "Accept All Hunks",
+        "category": "Anvil",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "anvil.review.rejectAll",
+        "title": "Reject All Hunks",
+        "category": "Anvil",
+        "icon": "$(close-all)"
+      },
+      {
+        "command": "anvil.openSession",
+        "title": "Open Session in TrueForge",
+        "category": "Anvil"
+      },
+      {
+        "command": "anvil.focusPanel",
+        "title": "Focus Panel",
+        "category": "Anvil"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "anvil.inlineEdit",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "anvil.cancel",
+        "key": "escape",
+        "when": "anvil.running"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "anvil.review.acceptAll",
+          "when": "resourceScheme == anvil-proposed",
+          "group": "navigation@1"
+        },
+        {
+          "command": "anvil.review.rejectAll",
+          "when": "resourceScheme == anvil-proposed",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "anvil.inlineEdit",
+          "when": "editorHasSelection",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Anvil",
+      "properties": {
+        "anvil.trueforgeUrl": {
+          "type": "string",
+          "default": "http://localhost:8790",
+          "description": "TrueForge base URL."
+        },
+        "anvil.models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Ordered model chain (provider/model FQNs configured in TrueForge). Must be set; Doctor warns when empty."
+        },
+        "anvil.retriesPerModel": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0,
+          "description": "Transient retries before switching to the next model."
+        },
+        "anvil.stallTimeoutSec": {
+          "type": "number",
+          "default": 45,
+          "minimum": 1,
+          "description": "No-event timeout in seconds; treated as a transient failure."
+        },
+        "anvil.contextBudget": {
+          "type": "number",
+          "default": 12000,
+          "minimum": 0,
+          "description": "Token budget for context Anvil pushes into each request."
+        },
+        "anvil.mcpPort": {
+          "type": "number",
+          "default": 7801,
+          "description": "Port of the Anvil MCP bridge (bound to 127.0.0.1)."
+        },
+        "anvil.cancelBehavior": {
+          "type": "string",
+          "enum": [
+            "revert",
+            "keep"
+          ],
+          "default": "revert",
+          "description": "revert rolls back a cancelled run's applied changes; keep keeps the accepted ones."
+        },
+        "anvil.commandTimeoutSec": {
+          "type": "number",
+          "default": 120,
+          "minimum": 1,
+          "description": "Timeout in seconds for run_command."
+        }
+      }
+    }
+  }
+}

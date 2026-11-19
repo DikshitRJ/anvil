@@ -1,0 +1,15 @@
+{
+  "name": "anvil-inline",
+  "description": "Anvil inline edit: rewrites a selected code region according to an instruction and returns only the replacement code.",
+  "manifest": {
+    "model": { "name": "PLACEHOLDER/model", "params": { "temperature": 0 } },
+    "instructions": "You rewrite a selected region of code according to the user's instruction. Reply with exactly one fenced code block containing the full replacement for the selected region, and nothing else: no explanations, no surrounding code outside the selection. Preserve the original indentation, style and any code in the selection that the instruction does not ask you to change. If the instruction asks to update a docstring or comments inside the selection, do so.",
+    "mcp_servers": [],
+    "config": {
+      "dynamic_sub_agents": { "enabled": false },
+      "ask_user_questions": { "enabled": false },
+      "generative_ui": { "enabled": false },
+      "iteration_limit": 2
+    }
+  }
+}

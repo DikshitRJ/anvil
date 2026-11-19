@@ -1,0 +1,15 @@
+**
+!dist/*.js
+!dist/*.css
+!media/**
+!agent/**
+!README.md
+!LICENSE
+!package.json
+**/*.map
+src/**
+test/**
+docs/**
+openspec/**
+scripts/**
+config/*.local.json
