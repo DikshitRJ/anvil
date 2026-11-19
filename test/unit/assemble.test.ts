@@ -38,7 +38,9 @@ describe('assembleContext', () => {
       expect(pack.used).toBeLessThanOrEqual(budget);
       expect(pack.used).toBe(pack.items.reduce((a, i) => a + i.tokens, 0));
     }
-    const small = assembleContext(idx, sig('server'), 600);
+    for (let i = 0; i < 30; i++)
+      idx.updateFile(`src/m${i}.py`, `def server${i}():\n    return "server ${'y'.repeat(300)}"\n`);
+    const small = assembleContext(idx, sig('server'), 400);
     expect(small.dropped.some((d) => d.reason === 'over budget')).toBe(true);
   });
 

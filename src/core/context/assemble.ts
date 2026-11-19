@@ -2,6 +2,7 @@
 import type { CodeIndex } from './codeIndex';
 import { chunkAt, rankCandidates, rankedChunks, type Candidate } from './rank';
 import { tokenize } from './tokenize';
+import { windowChunk } from './window';
 import type { Chunk, ContextItem, ContextPack, ContextSignals } from './types';
 
 export type { ContextItem, ContextPack, ContextSignals } from './types';
@@ -10,6 +11,7 @@ const PIN_SHARE = 0.5;
 const WHOLE_FILE_SHARE = 0.35;
 const REPO_MAP_SHARE = 0.1;
 const MAX_PER_FILE = 3;
+const CHUNK_CAP_SHARE = 0.12;
 
 // Math.ceil(chars / 4)
 export function estimateTokens(text: string): number {
@@ -107,11 +109,13 @@ function packRanked(
   pins: ContextItem[],
   room: number,
   dropped: ContextPack['dropped'],
+  q: Set<string>,
+  cap: number,
 ): ContextItem[] {
   const out: ContextItem[] = [];
   let left = room;
   for (const cand of cands) {
-    const c = cand.chunk;
+    const c = windowChunk(cand.chunk, q, cap);
     const same = [...pins, ...out].filter((i) => i.path === c.path);
     if (same.length >= MAX_PER_FILE || overlaps(same, c.path, c.startLine, c.endLine)) continue;
     const it = item(c, 'chunk', cand.reasons.join('; '), cand.score);
@@ -131,7 +135,14 @@ export function assembleContext(index: CodeIndex, s: ContextSignals, budget: num
   const focusFiles = [...new Set([...pins.map((i) => i.path), ...cands.map((c) => c.chunk.path)])].slice(0, 5);
   const map = repoMapItem(index, focusFiles, Math.floor(budget * REPO_MAP_SHARE));
   const room = budget - pinned - (map?.tokens ?? 0);
-  const ranked = packRanked(cands, pins, room, dropped);
+  const ranked = packRanked(
+    cands,
+    pins,
+    room,
+    dropped,
+    new Set(tokenize(s.query)),
+    Math.floor(budget * CHUNK_CAP_SHARE),
+  );
   const items = [...pins, ...ranked, ...(map ? [map] : [])];
   return { items, budget, used: items.reduce((a, i) => a + i.tokens, 0), dropped };
 }

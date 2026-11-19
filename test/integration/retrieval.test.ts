@@ -93,3 +93,25 @@ describe('retrieval on mini-flask', () => {
     expect(index.repoMap({ maxTokens: 300 }).length).toBeLessThanOrEqual(300 * 4);
   });
 });
+
+describe('path priors and chunk cap (#23)', () => {
+  it('Task B: top item is a cli.py code chunk and no changelog is in the top 5', () => {
+    const pack = assembleContext(index, signals(TASK_B), 12000);
+    const ranked = pack.items.filter((i) => i.kind !== 'repo-map');
+    expect(ranked[0]?.path).toBe('src/flask/cli.py');
+    expect(ranked[0]?.kind).toBe('chunk');
+    expect(ranked.slice(0, 5).some((i) => /^CHANGES/.test(i.path))).toBe(false);
+    expect(pack.used).toBeLessThanOrEqual(pack.budget);
+    expect(pack.used).toBe(pack.items.reduce((a, i) => a + i.tokens, 0));
+  });
+
+  it('caps a single ranked chunk at 12% of the budget with accurate line numbers', () => {
+    const budget = 2000;
+    const pack = assembleContext(index, signals(TASK_B), budget);
+    for (const i of pack.items.filter((x) => x.kind === 'chunk')) {
+      expect(i.tokens).toBeLessThanOrEqual(budget * 0.12);
+      const full = (index.getContent(i.path) ?? '').split('\n');
+      expect(full.slice((i.startLine ?? 1) - 1, i.endLine).join('\n')).toBe(i.text);
+    }
+  });
+});
