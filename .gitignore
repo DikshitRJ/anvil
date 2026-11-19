@@ -10,7 +10,6 @@ coverage/
 .env.*
 !.env.example
 config/trueforge.local.json
-# local tooling / competition material
+# local tooling
 .serena/
-TrueFoundry_Forge-a-thon_compressed_*.pdf
 .worktrees/
