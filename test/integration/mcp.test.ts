@@ -1,50 +1,9 @@
 import http from 'node:http';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startBridge } from '../../src/mcp/server';
 import { makeFakeGate, makeFakeHost, type FakeGate, type FakeHost } from '../helpers/fakeHost';
-
-// MOCK: minimal reference of src/core/paths (real one lands in another PR).
-vi.mock('../../src/core/paths', async () => {
-  const path = await import('node:path');
-  return {
-    PathError: class PathError extends Error {},
-    resolveInWorkspace: (root: string, p: string) => {
-      const abs = path.posix.resolve(root, p);
-      if (abs !== root && !abs.startsWith(`${root}/`)) throw new Error(`Path escapes workspace: ${p}`);
-      return abs;
-    },
-    toRelative: (root: string, abs: string) => path.posix.relative(root, abs),
-  };
-});
-
-// MOCK: minimal reference of src/core/edits/applyEdit (real one lands in another PR).
-vi.mock('../../src/core/edits/applyEdit', () => {
-  class EditError extends Error {
-    constructor(
-      public code: string,
-      message: string,
-    ) {
-      super(message);
-    }
-  }
-  return {
-    EditError,
-    simulateEdit: (
-      current: string | null,
-      op: { kind: string; path: string; content: string; oldString: string; newString: string; replaceAll?: boolean },
-    ) => {
-      if (op.kind === 'write') return op.content;
-      if (current === null) throw new EditError('FILE_NOT_FOUND', `no such file ${op.path}`);
-      const n = current.split(op.oldString).length - 1;
-      if (n === 0) throw new EditError('NOT_FOUND', 'old_string not found');
-      if (n > 1 && !op.replaceAll) throw new EditError('AMBIGUOUS', 'old_string not unique');
-      return current.split(op.oldString).join(op.newString);
-    },
-  };
-});
-
 const TOKEN = 'test-token-123';
 let host: FakeHost;
 let gate: FakeGate;
