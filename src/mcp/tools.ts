@@ -221,6 +221,9 @@ async function gatedWrite(
   }
   const { content, feedback } = await gate.resolveWrite(tool, args, current, proposed);
   if (content === null) return ok(`The user rejected this edit. ${feedback}`.trim());
+  if ((await host.readFile(rel)) !== current) {
+    return ok('The file changed while the review was open; re-read it and propose the edit again.');
+  }
   await host.applyWrite(rel, content, `${tool} ${rel}`);
   return ok(`Applied edit to ${rel}. ${feedback}`.trim());
 }

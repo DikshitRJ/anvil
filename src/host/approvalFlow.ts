@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import type { ResolvedToolCall } from '../core/agent/toolCalls';
 import { simulateEdit, EditError, type EditOp } from '../core/edits/applyEdit';
-import { ApprovalLedger, canonicalKey } from '../core/ledger';
+import { ApprovalLedger, scopedKey } from '../core/ledger';
 import { PathError, resolveInWorkspace, toRelative } from '../core/paths';
 import type { WriteGate } from '../mcp/server';
 import type { HostToWebview } from '../panel/protocol';
@@ -24,6 +24,7 @@ export class ApprovalFlow {
   readonly ledger = new ApprovalLedger();
   private readonly originals = new Map<string, string | null>();
   private readonly approvedCommands = new Set<string>();
+  private cmdSeq = 0;
   private readonly pending = new Map<string, (allow: boolean) => void>();
 
   constructor(private readonly d: ApprovalDeps) {}
@@ -67,7 +68,7 @@ export class ApprovalFlow {
     const ok = r.content !== null;
     this.d.post({ type: 'approvalResolved', runId, id: call.callId, outcome: reviewOutcome(r.accepted, r.total, ok) });
     if (!ok) return deny(r.feedback || 'The user rejected this change.');
-    const key = canonicalKey(call.tool, call.input);
+    const key = scopedKey(runId, call.tool, call.input);
     this.ledger.put(key, { finalContent: r.content, acceptedHunks: [], totalHunks: r.total, feedback: r.feedback });
     this.originals.set(key, current);
     return { allow: true };
@@ -76,7 +77,7 @@ export class ApprovalFlow {
   private async approveCommand(call: ResolvedToolCall): Promise<ApprovalDecision> {
     const allowed = await this.askCommand(call.callId, call.input);
     if (!allowed) return deny('The user denied running this command.');
-    this.approvedCommands.add(canonicalKey('run_command', call.input));
+    this.approvedCommands.add(scopedKey(this.d.runId(), 'run_command', call.input));
     return { allow: true };
   }
 
@@ -119,7 +120,7 @@ export class ApprovalFlow {
 
   readonly gate: Pick<WriteGate, 'resolveWrite' | 'authorizeCommand'> = {
     resolveWrite: async (tool, args, current, proposed) => {
-      const key = canonicalKey(tool, args);
+      const key = scopedKey(this.d.runId(), tool, args);
       const entry = this.ledger.take(key);
       const original = this.originals.get(key);
       this.originals.delete(key);
@@ -133,8 +134,8 @@ export class ApprovalFlow {
       return { content: r.content, feedback: r.feedback };
     },
     authorizeCommand: async (args) => {
-      if (this.approvedCommands.delete(canonicalKey('run_command', args))) return true;
-      return this.askCommand(`cmd-${Date.now().toString(36)}`, args);
+      if (this.approvedCommands.delete(scopedKey(this.d.runId(), 'run_command', args))) return true;
+      return this.askCommand(`cmd-${++this.cmdSeq}`, args);
     },
   };
 }
