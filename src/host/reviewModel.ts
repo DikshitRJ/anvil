@@ -80,7 +80,8 @@ export class ReviewModel {
       .filter((h) => this.decisionOf(h.id) === 'rejected')
       .map((h) => summarizeHunk(h, 8))
       .join('\n');
-    const head = a === 0 ? `The user rejected all ${n} hunk(s):\n` : `Accepted ${a} of ${n} hunks. The user rejected:\n`;
+    const head =
+      a === 0 ? `The user rejected all ${n} hunk(s):\n` : `Accepted ${a} of ${n} hunks. The user rejected:\n`;
     return capLines(head + rejected);
   }
 
