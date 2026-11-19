@@ -70,7 +70,13 @@ export async function startTrueForge(): Promise<TrueForgeProcess> {
     if (lines.length > LOG_KEEP) lines.splice(0, lines.length - LOG_KEEP);
   };
   const child = spawn('npx', ['-y', '@truefoundry/trueforge@latest', '--port', String(port)], {
-    env: { ...process.env, SQLITE_PATH: join(dir, 'db.sqlite') },
+    env: {
+      ...process.env,
+      SQLITE_PATH: join(dir, 'db.sqlite'),
+      // TrueForge's outbound URL guard blocks loopback provider and MCP URLs by default. The mock LLM and the
+      // Anvil bridge both run on loopback, so allow exactly those hosts.
+      OUTBOUND_URL_ALLOWED_HOSTS: JSON.stringify(['127.0.0.1', 'localhost']),
+    },
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
