@@ -161,6 +161,7 @@ function extractRst(path: string, lines: string[]): SymbolInfo[] {
 export function extractSymbols(path: string, content: string): SymbolInfo[] {
   const ext = extOf(path);
   const lines = content.split('\n');
+  if (lines[lines.length - 1] === '') lines.pop();
   let syms: SymbolInfo[] = [];
   if (ext === '.py') syms = extractPython(path, lines);
   else if (ext === '.rb') syms = extractRuby(path, lines);
