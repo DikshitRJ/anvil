@@ -4,7 +4,13 @@ const { runTests } = require('@vscode/test-electron');
 async function main() {
   const extensionDevelopmentPath = path.resolve(__dirname, '../..');
   const extensionTestsPath = path.resolve(__dirname, 'suite/index.js');
-  await runTests({ extensionDevelopmentPath, extensionTestsPath });
+  // Open a workspace so activation exercises the full boot path (index, bridge, panel).
+  const workspace = path.resolve(__dirname, '../fixtures/mini-flask');
+  await runTests({
+    extensionDevelopmentPath,
+    extensionTestsPath,
+    launchArgs: [workspace, '--disable-extensions', '--skip-welcome', '--skip-release-notes'],
+  });
 }
 
 main().catch((err) => {
