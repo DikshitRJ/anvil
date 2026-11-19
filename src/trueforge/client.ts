@@ -1,9 +1,16 @@
-import type { TrueForge } from '@truefoundry/trueforge-sdk';
+// TrueForge SDK client factory and a cheap health probe.
+import { TrueForge } from '@truefoundry/trueforge-sdk';
 
-export function createClient(_baseUrl: string): TrueForge {
-  throw new Error('not implemented');
+export function createClient(baseUrl: string): TrueForge {
+  return new TrueForge({ baseUrl, timeoutInSeconds: 600, maxRetries: 0 });
 }
 
-export async function checkHealth(_baseUrl: string, _timeoutMs?: number): Promise<boolean> {
-  throw new Error('not implemented');
+// GET {baseUrl}/healthz; never throws
+export async function checkHealth(baseUrl: string, timeoutMs = 2000): Promise<boolean> {
+  try {
+    const res = await fetch(`${baseUrl}/healthz`, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
