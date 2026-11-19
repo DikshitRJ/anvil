@@ -147,6 +147,11 @@ export function assembleContext(index: CodeIndex, s: ContextSignals, budget: num
   return { items, budget, used: items.reduce((a, i) => a + i.tokens, 0), dropped };
 }
 
+// Break closing tags so item text cannot terminate the wrapper (`</` becomes `<\/`).
+function neutralise(text: string): string {
+  return text.replace(/<\/(item|anvil_context)/gi, '<\\/$1');
+}
+
 function attr(v: string): string {
   return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
@@ -156,7 +161,7 @@ export function renderContextPack(p: ContextPack): string {
   const head = `<anvil_context budget="${p.budget}" used="${p.used}" note="Files pre-selected by Anvil; each item says why.">`;
   const body = p.items.map((i) => {
     const lines = i.startLine !== undefined ? ` lines="${i.startLine}-${i.endLine}"` : '';
-    return `<item path="${attr(i.path)}"${lines} kind="${i.kind}" reason="${attr(i.reason)}">\n${i.text}\n</item>`;
+    return `<item path="${attr(i.path)}"${lines} kind="${i.kind}" reason="${attr(i.reason)}">\n${neutralise(i.text)}\n</item>`;
   });
   return [head, ...body, '</anvil_context>'].join('\n');
 }
