@@ -49,7 +49,7 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown('a\nb\n\nc')).toBe('<p>a<br>b</p><p>c</p>');
   });
 
-  it('strips NUL placeholders from input', () => {
-    expect(renderMarkdown('`a` \u00000\u0000')).toBe('<p><code>a</code> 0</p>');
+  it('strips placeholder chars from input', () => {
+    expect(renderMarkdown('`a` \uE0000\uE000')).toBe('<p><code>a</code> 0</p>');
   });
 });

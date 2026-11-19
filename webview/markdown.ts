@@ -14,13 +14,13 @@ function inline(text: string): string {
   const codes: string[] = [];
   let out = text.replace(/`([^`\n]+)`/g, (_m, c: string) => {
     codes.push(`<code>${c}</code>`);
-    return `\u0000${codes.length - 1}\u0000`;
+    return `\uE000${codes.length - 1}\uE000`;
   });
   out = out.replace(/\[([^\]\n]+)\]\(([^)\n]*)\)/g, '$1 ($2)');
   out = out.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
   out = out.replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, '$1<em>$2</em>');
-  return out.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => codes[Number(i)] ?? '');
+  return out.replace(/\uE000(\d+)\uE000/g, (_m, i: string) => codes[Number(i)] ?? '');
 }
 
 const FENCE = /^```\s*([\w+#.-]*)\s*$/;
@@ -94,7 +94,7 @@ function block(lines: string[], i: number): [string, number] {
 }
 
 export function renderMarkdown(src: string): string {
-  const lines = escapeHtml(src.replace(/\u0000/g, ''))
+  const lines = escapeHtml(src.replace(/\uE000/g, ''))
     .replace(/\r\n?/g, '\n')
     .split('\n');
   const out: string[] = [];
