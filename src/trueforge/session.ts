@@ -43,10 +43,13 @@ type Stream = AsyncIterable<TrueForgeApi.TurnStreamingEvent>;
 type Drain = 'terminal' | 'paused' | 'ended' | 'stall' | 'cancelled';
 
 const MAX_RESUBSCRIBES = 3;
+const RETRY_NOTE =
+  '[Anvil] The previous attempt failed and any file changes it made were reverted. Re-read files before editing.\n\n';
 const DEFAULT_ANSWER = 'Proceed with your best judgement.';
 
 export class AnvilSession {
   private id?: string;
+  private specModel?: string;
   private running = false;
   private cancelled = false;
   private received = false;
@@ -63,6 +66,8 @@ export class AnvilSession {
       stallTimeoutMs: number;
       title?: string;
       baseUrl?: string;
+      // true while the host is running a tool call for the turn; the stall watchdog then waits
+      isBusy?: () => boolean;
     },
   ) {}
 
@@ -98,26 +103,41 @@ export class AnvilSession {
 
   private async runLoop(input: string, hooks: RunHooks): Promise<RunResult> {
     const { relay } = this.opts;
+    relay.reset();
+    await this.syncModel(relay.current());
     let retries = 0;
+    let text = input;
     for (;;) {
       if (this.cancelled) return { status: 'cancelled', ...this.ids() };
-      const out = await this.attempt(input, hooks);
+      let out = await this.attempt(text, hooks);
       if (out.kind === 'done') return { status: 'done', output: out.output, metrics: out.metrics, ...this.ids() };
       if (out.kind === 'cancelled') return { status: 'cancelled', ...this.ids() };
-      const kind = classifyFailure(out);
-      const step = relay.onFailure(kind, out.message);
-      if (step.action === 'give-up') return this.giveUp(kind, step.reason, out.message);
-      if (step.action === 'retry') {
-        hooks.onRetry?.(step.model, ++retries, step.delayMs, out.message);
-        if (!(await this.backoff(hooks, step.delayMs))) return { status: 'cancelled', ...this.ids() };
-      } else {
+      for (;;) {
+        const kind = classifyFailure(out);
+        const step = relay.onFailure(kind, out.message);
+        if (step.action === 'give-up') return this.giveUp(kind, step.reason, out.message);
+        if (step.action === 'retry') {
+          hooks.onRetry?.(step.model, ++retries, step.delayMs, out.message);
+          if (!(await this.backoff(hooks, step.delayMs))) return { status: 'cancelled', ...this.ids() };
+          break;
+        }
         retries = 0;
-        hooks.onModelSwitch?.(step.from, step.model, out.message);
         await hooks.beforeRetry?.();
-        await this.swapModel(step.model);
-        if (this.cancelled) return { status: 'cancelled', ...this.ids() };
+        const err = await this.swapModel(step.model);
+        if (!err) {
+          hooks.onModelSwitch?.(step.from, step.model, out.message);
+          break;
+        }
+        out = this.failTurn(err);
       }
+      if (this.cancelled) return { status: 'cancelled', ...this.ids() };
+      text = RETRY_NOTE + input;
     }
+  }
+
+  // best effort: put the session back on the relay's model (e.g. after a fallback in an earlier run)
+  private async syncModel(model: string): Promise<void> {
+    if (this.id && this.specModel !== model) await this.swapModel(model);
   }
 
   private ids(): { model: string; sessionId?: string } {
@@ -140,12 +160,15 @@ export class AnvilSession {
     return r === 'slept' && !this.cancelled;
   }
 
-  private async swapModel(model: string): Promise<void> {
+  // returns an error message when the session spec could not be updated
+  private async swapModel(model: string): Promise<string | undefined> {
+    if (!this.id) return undefined;
     try {
-      if (this.id)
-        await this.opts.client.sessions.update(this.id, { agent: { spec: buildSpec(this.opts.agent, model) } });
-    } catch {
-      // the next attempt reports the failure if the session is really unusable
+      await this.opts.client.sessions.update(this.id, { agent: { spec: buildSpec(this.opts.agent, model) } });
+      this.specModel = model;
+      return undefined;
+    } catch (e) {
+      return (e as { message?: string })?.message ?? String(e);
     }
   }
 
@@ -177,6 +200,7 @@ export class AnvilSession {
     const { client, agent, relay, title } = this.opts;
     const res = await client.sessions.create({ agent: { spec: buildSpec(agent, relay.current()) } }, this.reqOpts());
     this.id = res.data.id;
+    this.specModel = relay.current();
     if (title) await client.sessions.update(this.id, { title: title.slice(0, 50) }).catch(() => undefined);
     return this.id;
   }
@@ -252,19 +276,17 @@ export class AnvilSession {
   }
 
   private async nextEvent(it: AsyncIterator<TrueForgeApi.TurnStreamingEvent>) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const stall = new Promise<'stall'>((r) => (timer = setTimeout(() => r('stall'), this.opts.stallTimeoutMs)));
     const next = it.next();
     next.catch(() => undefined);
-    try {
-      const r = await Promise.race([next, stall, this.cancelSignal]);
-      if (r === 'stall') {
-        this.controller.abort();
-        void this.serverCancel();
-      }
+    for (;;) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const stall = new Promise<'stall'>((r) => (timer = setTimeout(() => r('stall'), this.opts.stallTimeoutMs)));
+      const r = await Promise.race([next, stall, this.cancelSignal]).finally(() => clearTimeout(timer));
+      if (r !== 'stall') return r;
+      if (this.opts.isBusy?.()) continue; // host is mid tool call: re-arm instead of aborting
+      this.controller.abort();
+      void this.serverCancel();
       return r;
-    } finally {
-      clearTimeout(timer);
     }
   }
 
@@ -282,9 +304,20 @@ export class AnvilSession {
     }
     if (events.length === 0) throw new Error('turn paused with no pending tool call to answer');
     const sub = await this.subscribe(sid, view); // subscribe first, then answer
-    await this.opts.client.sessions.createTurnEvents(sid, view.turnId as string, { events }, this.reqOpts());
+    try {
+      await this.opts.client.sessions.createTurnEvents(sid, view.turnId as string, { events }, this.reqOpts());
+    } catch (e) {
+      this.closeStream(sub);
+      this.controller.abort();
+      throw e;
+    }
     for (const e of events) this.reducer.apply(e);
     return sub;
+  }
+
+  private closeStream(stream: Stream): void {
+    const it = stream[Symbol.asyncIterator]();
+    void Promise.resolve(it.return?.()).catch(() => undefined);
   }
 
   private async answerCall(call: ResolvedToolCall, hooks: RunHooks): Promise<TrueForgeApi.TurnUserEventMessage> {

@@ -18,13 +18,15 @@ afterEach(async () => {
   await mock.stop();
 });
 
-function make(models = ['a'], stallTimeoutMs = 5000, baseUrl = url): AnvilSession {
+function make(models = ['a'], stallTimeoutMs = 5000, baseUrl = url, isBusy?: () => boolean): AnvilSession {
   const relay = new ModelRelay({ models, retriesPerModel: 1, backoffMs: [5] });
   const client = createClient(baseUrl);
-  session = new AnvilSession({ client, agent: loadAgentDefinitions().coder, relay, stallTimeoutMs, baseUrl });
+  session = new AnvilSession({ client, agent: loadAgentDefinitions().coder, relay, stallTimeoutMs, baseUrl, isBusy });
   return session;
 }
 
+const RETRY_NOTE =
+  '[Anvil] The previous attempt failed and any file changes it made were reverted. Re-read files before editing.\n\n';
 const allow: RunHooks = { onApproval: () => Promise.resolve({ allow: true }) };
 const answers = (): Recorded[] => mock.find('POST', '/events');
 const simple = (out = 'ok') => ({ steps: [emit(E.created()), emit(E.message('m', out)), emit(E.done(out))] });
@@ -178,7 +180,7 @@ describe('AnvilSession', () => {
     expect(onModelSwitch).toHaveBeenCalledWith('a', 'b', expect.stringContaining('401'));
     expect(mock.find('PATCH', '/sessions/')[0]?.body.agent.spec.model.name).toBe('b');
     const inputs = mock.find('POST', '/turns').map((r) => r.body.input[0].content);
-    expect(inputs).toEqual(['task', 'task']);
+    expect(inputs).toEqual(['task', RETRY_NOTE + 'task']);
   });
 
   it('retries after a 503 on the turn request', async () => {
@@ -216,5 +218,79 @@ describe('AnvilSession', () => {
     expect(res.status).toBe('error');
     expect(res.error).toContain('All configured models failed');
     expect(res.error).toContain('model b does not exist');
+  });
+
+  it('does not stall-abort while the host is busy', async () => {
+    mock.push({ steps: [emit(E.created()), 'hang'] });
+    const onRetry = vi.fn();
+    const s = make(['a'], 100, url, () => true);
+    const p = s.run('go', { ...allow, onRetry });
+    await new Promise((r) => setTimeout(r, 450));
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(mock.find('POST', '/cancel')).toHaveLength(0);
+    await s.cancel();
+    expect((await p).status).toBe('cancelled');
+  });
+
+  it('stall-aborts when idle even with an isBusy hook', async () => {
+    mock.push({ steps: [emit(E.created()), 'hang'] }, simple('after stall'));
+    const res = await make(['a'], 100, url, () => false).run('go', allow);
+    expect(res).toMatchObject({ status: 'done', output: 'after stall' });
+    expect(mock.find('POST', '/cancel').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('resets the relay each run and switches the session back to the primary', async () => {
+    mock.push(
+      { steps: [emit(E.created()), emit(E.error('Invalid API key (401)'))] },
+      simple('on b'),
+      simple('on a again'),
+    );
+    const s = make(['a', 'b']);
+    expect((await s.run('one', allow)).model).toBe('b');
+    const res = await s.run('two', allow);
+    expect(res).toMatchObject({ status: 'done', model: 'a' });
+    const patches = mock.find('PATCH', '/sessions/').map((r) => r.body.agent?.spec.model.name);
+    expect(patches).toEqual(['b', 'a']);
+    const inputs = mock.find('POST', '/turns').map((r) => r.body.input[0].content);
+    expect(inputs[2]).toBe('two');
+  });
+
+  it('announces a model switch only after the session update succeeds', async () => {
+    mock.failNext.patch = 1;
+    const bad = { steps: [emit(E.created()), emit(E.error('Invalid API key (401)'))] };
+    mock.push(bad, bad, simple('x'));
+    const onModelSwitch = vi.fn();
+    const res = await make(['a', 'b', 'c']).run('go', { ...allow, onModelSwitch });
+    expect(onModelSwitch).toHaveBeenCalledTimes(1);
+    expect(onModelSwitch).toHaveBeenCalledWith('b', 'c', expect.any(String));
+    expect(res.model).toBe('c');
+  });
+
+  it('feeds a failed switch update back into the relay', async () => {
+    mock.failNext.patch = 1;
+    mock.push({ steps: [emit(E.created()), emit(E.error('Invalid API key (401)'))] });
+    const onModelSwitch = vi.fn();
+    const onRetry = vi.fn();
+    const res = await make(['a', 'b']).run('go', { ...allow, onModelSwitch, onRetry });
+    expect(onModelSwitch).not.toHaveBeenCalled();
+    expect(onRetry).toHaveBeenCalledWith('b', 1, 5, expect.stringContaining('bad spec'));
+    expect(res.status).toBe('done');
+  });
+
+  it('prefixes the input on a plain retry too', async () => {
+    mock.push({ httpFail: { status: 503, message: 'down' }, steps: [] }, simple('ok'));
+    await make().run('go', allow);
+    const inputs = mock.find('POST', '/turns').map((r) => r.body.input[0].content);
+    expect(inputs).toEqual(['go', RETRY_NOTE + 'go']);
+  });
+
+  it('closes the subscription when answering a pause fails', async () => {
+    mock.failNext.events = 1;
+    mock.push(approvalScenario(E.mcpCall('c1', 'edit_file', { path: 'a.ts' })), simple('recovered'));
+    const onRetry = vi.fn();
+    const res = await make(['a']).run('edit', { ...allow, onRetry });
+    expect(onRetry).toHaveBeenCalledWith('a', 1, 5, expect.stringContaining('bad events'));
+    expect(res).toMatchObject({ status: 'done', output: 'recovered' });
+    expect(mock.find('GET', '/subscribe').length).toBeGreaterThanOrEqual(1);
   });
 });

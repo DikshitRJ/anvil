@@ -93,6 +93,8 @@ interface Turn {
 export class MockTrueForge {
   requests: Recorded[] = [];
   scenarios: Scenario[] = [];
+  // number of upcoming PATCH session / POST events requests to fail with a 400
+  failNext = { patch: 0, events: 0 };
   private server: Server;
   private turns = new Map<string, Turn>();
   private agents: { id: string; name: string }[] = [];
@@ -140,12 +142,15 @@ export class MockTrueForge {
     const m = (re: RegExp) => re.exec(p);
     if (url.pathname === '/healthz') return json(200, { ok: true });
     if (rec.method === 'POST' && p === '/sessions') return json(200, { data: { id: 'sess_1' } });
+    if (rec.method === 'PATCH' && this.failNext.patch-- > 0) return json(400, { error: { message: 'bad spec' } });
     if (rec.method === 'PATCH' && m(/^\/sessions\/[^/]+$/)) return json(200, { data: { id: 'sess_1' } });
     if (rec.method === 'POST' && m(/^\/sessions\/[^/]+\/cancel$/)) return this.cancel(json);
     if (rec.method === 'POST' && m(/^\/sessions\/[^/]+\/turns$/)) return this.startTurn(res, json);
     const sub = m(/^\/sessions\/[^/]+\/turns\/([^/]+)\/subscribe$/);
     if (rec.method === 'GET' && sub) return this.subscribe(sub[1] as string, res);
     const ev = m(/^\/sessions\/[^/]+\/turns\/([^/]+)\/events$/);
+    if (rec.method === 'POST' && ev && this.failNext.events-- > 0)
+      return json(400, { error: { message: 'bad events' } });
     if (rec.method === 'POST' && ev) return this.answer(ev[1] as string, json);
     return this.handleResources(rec, p, json);
   }

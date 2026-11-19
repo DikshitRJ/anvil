@@ -329,7 +329,8 @@ export interface RunHooks {
 }
 export interface RunResult { status: 'done' | 'cancelled' | 'error'; output?: string; model: string; error?: string; sessionId?: string; metrics?: Record<string, number> }
 export class AnvilSession {
-  constructor(opts: { client: TrueForge; agent: AgentDefinition; relay: ModelRelay; stallTimeoutMs: number; title?: string });
+  constructor(opts: { client: TrueForge; agent: AgentDefinition; relay: ModelRelay; stallTimeoutMs: number; title?: string; baseUrl?: string;
+    isBusy?: () => boolean /* stall watchdog re-arms while true (host mid tool call) */ });
   readonly sessionId: string | undefined;
   run(input: string, hooks: RunHooks): Promise<RunResult>;
   cancel(): Promise<void>;
