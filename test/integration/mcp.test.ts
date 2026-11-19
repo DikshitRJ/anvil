@@ -214,6 +214,17 @@ describe('edit_file / write_file', () => {
     expect(r).toEqual({ isError: false, text: 'The user rejected this edit. nope' });
     expect(host.calls.applyWrite).toEqual([]);
   });
+  it('does not write when the file changed during the review', async () => {
+    gate.decide = (_t, _a, _c, proposed) => {
+      host.files.set('a.ts', 'user edit\n');
+      return { content: proposed, feedback: '' };
+    };
+    const r = await call('edit_file', edit);
+    expect(r.isError).toBe(false);
+    expect(r.text).toBe('The file changed while the review was open; re-read it and propose the edit again.');
+    expect(host.calls.applyWrite).toEqual([]);
+    expect(host.files.get('a.ts')).toBe('user edit\n');
+  });
   it('refuses when no run is active', async () => {
     gate.active = false;
     const r = await call('edit_file', edit);
