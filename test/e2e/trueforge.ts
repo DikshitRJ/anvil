@@ -80,7 +80,8 @@ export async function startTrueForge(): Promise<TrueForgeProcess> {
   child.on('exit', () => {
     exited = true;
   });
-  const baseUrl = `http://127.0.0.1:${port}`;
+  // TrueForge logs "listening on http://localhost:<port>" and may bind IPv6 loopback only, so probe localhost.
+  const baseUrl = `http://localhost:${port}`;
   const logs = (): string => lines.slice(-LOG_TAIL).join('\n');
   const stop = async (): Promise<void> => {
     await killTree(child);
