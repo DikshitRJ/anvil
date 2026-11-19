@@ -157,6 +157,14 @@ describe('mockLlm', () => {
     expect(JSON.parse(second.args)).toMatchObject({ tool_name: 'edit_file' });
   });
 
+  it('ignores platform-only tools: a plain SELECTION reply still comes back as text', async () => {
+    const platform = { type: 'function', function: { name: 'ask_user_question' } };
+    const sel = { role: 'user', content: 'SELECTION: def greet(): pass' };
+    const out = await sse(await post({ messages: [sel], tools: [platform], stream: true }));
+    expect(out.text).toBe(SELECTION_REPLY);
+    expect(out.name).toBe('');
+  });
+
   it('adds a usage chunk before [DONE] when include_usage is requested', async () => {
     const out = await sse(await post({ messages: [USER], stream: true, stream_options: { include_usage: true } }));
     expect(out.usage).toBeDefined();

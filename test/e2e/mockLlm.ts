@@ -157,10 +157,17 @@ function answeredNames(messages: ChatMessage[], names: Map<string, string>): str
   return out;
 }
 
+// True when the request offers any Anvil tool (search_code, edit_file, or the deferred call_tool). TrueForge adds its
+// own platform tools to requests even for agents without MCP servers, so 'any tool' is the wrong test.
+export function offersAnvilTools(tools: ToolDef[]): boolean {
+  const wanted = ['search_code', 'edit_file', DEFERRED];
+  return tools.map(toolNameOf).some((n) => wanted.some((w) => n.endsWith(w)));
+}
+
 export function planReply(req: ChatRequest): Reply {
   const messages = req.messages ?? [];
   const tools = req.tools ?? [];
-  if (tools.length === 0) {
+  if (!offersAnvilTools(tools)) {
     const text = lastUserText(messages);
     return textReply(text.includes('SELECTION') ? SELECTION_REPLY : 'ok');
   }
