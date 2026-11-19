@@ -1,0 +1,5 @@
+/* Anvil panel styles (placeholder) */
+body {
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-foreground);
+}
