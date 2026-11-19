@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+*.vsix
+coverage/
+.vscode-test/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+config/trueforge.local.json
+# local tooling / competition material
+.serena/
+TrueFoundry_Forge-a-thon_compressed_*.pdf
+.worktrees/
