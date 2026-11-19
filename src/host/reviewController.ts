@@ -35,6 +35,8 @@ interface Session {
   streamText: string;
   opened: boolean;
   closing: boolean;
+  lastFire: number;
+  timer?: ReturnType<typeof setTimeout>;
   cancelled: boolean;
   settle?: { resolve(r: ReviewResult): void; reject(e: Error): void };
   originalUri: vscode.Uri;
@@ -57,8 +59,6 @@ export class ReviewController implements vscode.Disposable {
     backgroundColor: new vscode.ThemeColor('diffEditor.insertedTextBackground'),
   });
   private readonly rejectedDeco = vscode.window.createTextEditorDecorationType({ isWholeLine: true, opacity: '0.5' });
-  private lastFire = 0;
-  private timer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(_context: vscode.ExtensionContext) {
     const d = this.disposables;
@@ -117,7 +117,6 @@ export class ReviewController implements vscode.Disposable {
 
   dispose(): void {
     this.cancelAll('disposed');
-    if (this.timer) clearTimeout(this.timer);
     this.disposables.forEach((x) => x.dispose());
   }
 
@@ -134,6 +133,7 @@ export class ReviewController implements vscode.Disposable {
       streamText: req.original,
       opened: false,
       closing: false,
+      lastFire: 0,
       cancelled: false,
       originalUri: vscode.Uri.from({ scheme: ORIGINAL, path, query: q }),
       proposedUri: vscode.Uri.from({ scheme: PROPOSED, path, query: q }),
@@ -158,6 +158,7 @@ export class ReviewController implements vscode.Disposable {
       this.changed.fire(s.proposedUri);
       this.lensChanged.fire();
       this.decorate();
+      if (s.opened && !this.hasTab(s)) this.openDiff(s); // user closed the tab while streaming
     });
   }
 
@@ -166,13 +167,29 @@ export class ReviewController implements vscode.Disposable {
     const s = this.queue.shift()!;
     this.current = s;
     void vscode.commands.executeCommand('setContext', 'anvil.reviewing', true);
+    this.openDiff(s);
+  }
+
+  private openDiff(s: Session): void {
+    s.opened = false; // tab-close handling stays off until the diff is actually showing
     const title = s.req.title ?? `${s.req.path.split('/').pop()} ↔ Anvil proposal (${s.req.source})`;
-    void Promise.resolve(
+    Promise.resolve(
       vscode.commands.executeCommand('vscode.diff', s.originalUri, s.proposedUri, title, { preview: false }),
-    ).then(() => {
-      s.opened = true;
-      this.decorate();
-    });
+    ).then(
+      () => {
+        s.opened = true;
+        this.decorate();
+      },
+      () => this.cancelSession(s, new ReviewCancelledError('could not open the diff editor')),
+    );
+  }
+
+  private hasTab(s: Session): boolean {
+    return vscode.window.tabGroups.all.some((g) =>
+      g.tabs.some(
+        (t) => t.input instanceof vscode.TabInputTextDiff && t.input.modified.toString() === s.proposedUri.toString(),
+      ),
+    );
   }
 
   private complete(s: Session): void {
@@ -191,6 +208,8 @@ export class ReviewController implements vscode.Disposable {
   // remove from state, close its tab, advance the queue
   private finalize(s: Session): void {
     s.closing = true;
+    if (s.timer) clearTimeout(s.timer);
+    s.timer = undefined;
     this.sessions.delete(s.id);
     const qi = this.queue.indexOf(s);
     if (qi >= 0) this.queue.splice(qi, 1);
@@ -214,12 +233,7 @@ export class ReviewController implements vscode.Disposable {
   private onTabsChanged(): void {
     const s = this.current;
     if (!s || !s.opened || s.closing || !s.model) return;
-    const open = vscode.window.tabGroups.all.some((g) =>
-      g.tabs.some(
-        (t) => t.input instanceof vscode.TabInputTextDiff && t.input.modified.toString() === s.proposedUri.toString(),
-      ),
-    );
-    if (open) return;
+    if (this.hasTab(s)) return;
     for (const h of s.model.hunks) if (s.model.decisionOf(h.id) === 'pending') s.model.decide(h.id, 'rejected');
     this.complete(s);
   }
@@ -233,13 +247,13 @@ export class ReviewController implements vscode.Disposable {
 
   private throttledFire(s: Session): void {
     const fire = (): void => {
-      this.lastFire = Date.now();
-      this.timer = undefined;
+      s.lastFire = Date.now();
+      s.timer = undefined;
       this.changed.fire(s.proposedUri);
     };
-    const wait = THROTTLE_MS - (Date.now() - this.lastFire);
+    const wait = THROTTLE_MS - (Date.now() - s.lastFire);
     if (wait <= 0) return fire();
-    this.timer ??= setTimeout(fire, wait);
+    s.timer ??= setTimeout(fire, wait);
   }
 
   private lenses(doc: vscode.TextDocument): vscode.CodeLens[] {
