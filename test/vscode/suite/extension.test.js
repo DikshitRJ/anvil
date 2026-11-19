@@ -28,4 +28,17 @@ suite('Anvil extension', () => {
   test('cancel with nothing running does not throw', async () => {
     await vscode.commands.executeCommand('anvil.cancel');
   });
+
+  test('MCP bridge listens on 127.0.0.1 and rejects unauthenticated requests', async () => {
+    let status = 0;
+    for (let i = 0; i < 20 && status === 0; i++) {
+      try {
+        const res = await fetch('http://127.0.0.1:7801/mcp', { method: 'POST', body: '{}' });
+        status = res.status;
+      } catch {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+    assert.strictEqual(status, 401);
+  });
 });

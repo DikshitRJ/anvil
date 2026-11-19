@@ -67,16 +67,17 @@ function registerMissing(context: vscode.ExtensionContext): void {
   void vscode.commands.getCommands(true).then((have) => {
     for (const id of [...COMMANDS, 'anvil.inlineEdit']) {
       if (!have.includes(id)) {
-        register(context, id, () =>
-          vscode.window.showWarningMessage('Anvil is not available (see the Anvil output channel).'),
-        );
+        register(context, id, () => {
+          void vscode.window.showWarningMessage('Anvil is not available (see the Anvil output channel).');
+        });
       }
     }
   });
 }
 
 function registerNoFolder(context: vscode.ExtensionContext): void {
-  const show = (): unknown => vscode.window.showInformationMessage('Open a folder to use Anvil');
+  // Fire-and-forget: returning the toast promise would block executeCommand until it is dismissed.
+  const show = (): void => void vscode.window.showInformationMessage('Open a folder to use Anvil');
   for (const id of [...COMMANDS, 'anvil.inlineEdit']) register(context, id, show);
 }
 
