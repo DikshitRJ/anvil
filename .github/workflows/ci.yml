@@ -47,6 +47,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Package extension (validation)
+        run: npm run package
+
   integration:
     name: Phase 2 · Integration tests
     needs: quality
