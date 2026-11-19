@@ -99,6 +99,8 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
   const commands = new CommandRunner();
   const review = new ReviewController(context);
   let health: 'ok' | 'down' | 'unknown' = 'unknown';
+  // 'elsewhere' = port held by another VS Code window. Limitation: only one window serves agent tools per port.
+  let bridgeState: 'ok' | 'elsewhere' | 'failed' = 'failed';
 
   const indexSvc = new IndexService(
     root,
@@ -112,7 +114,7 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
   const healthMsg = (): HostToWebview => ({
     type: 'health',
     trueforge: health,
-    bridge: bridge ? 'ok' : 'down',
+    bridge: bridgeState === 'failed' ? 'down' : 'ok',
     indexedFiles: indexSvc.index.files().length,
   });
   const initMsg = (): HostToWebview => ({
@@ -127,6 +129,7 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
       cfg,
       client,
       bridgeUrl: bridge?.url,
+      bridgeState,
       token,
       indexedFiles: indexSvc.index.files().length,
       indexReady: indexSvc.ready,
@@ -169,6 +172,8 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
   });
 
   const setup = async (): Promise<void> => {
+    // An 'elsewhere' window must not re-register: it would overwrite the URL set by the owning window.
+    if (bridgeState === 'elsewhere') return;
     if (!bridge)
       return void vscode.window.showErrorMessage('Anvil: MCP bridge is not running; cannot register it in TrueForge.');
     try {
@@ -184,12 +189,20 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
 
   try {
     bridge = await startBridge({ host, gate: run, port: cfg.mcpPort, token });
+    bridgeState = 'ok';
     log(`MCP bridge at ${bridge.url}`);
   } catch (e) {
     log(`bridge failed: ${String(e)}`);
-    void vscode.window.showErrorMessage(
-      `Anvil MCP bridge failed to start: ${e instanceof Error ? e.message : String(e)}. Agent tools will not work.`,
-    );
+    if (/EADDRINUSE|in use/i.test(e instanceof Error ? e.message : String(e))) {
+      bridgeState = 'elsewhere';
+      void vscode.window.showInformationMessage(
+        `Anvil agent tools are served by another VS Code window (port ${cfg.mcpPort}). Inline edit works here; use the agent panel in that window or change anvil.mcpPort.`,
+      );
+    } else {
+      void vscode.window.showErrorMessage(
+        `Anvil MCP bridge failed to start: ${e instanceof Error ? e.message : String(e)}. Agent tools will not work.`,
+      );
+    }
   }
 
   const healthLoop = new HealthLoop(
