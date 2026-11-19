@@ -45,9 +45,9 @@ function qualified(s: SymbolInfo): string {
 }
 
 function bigClass(path: string, lines: Lines, cls: SymbolInfo, methods: SymbolInfo[]): Chunk[] {
-  const out = gap(path, lines, cls.line, methods[0].line - 1, cls.name);
+  const out = gap(path, lines, cls.line, methods[0]!.line - 1, cls.name);
   for (const m of methods) out.push(...range(path, lines, m.line, m.endLine, qualified(m)));
-  const last = methods[methods.length - 1];
+  const last = methods[methods.length - 1]!;
   return out.concat(gap(path, lines, last.endLine + 1, cls.endLine, cls.name));
 }
 
@@ -66,7 +66,7 @@ function windows(path: string, lines: Lines): Chunk[] {
 function flatten(symbols: SymbolInfo[]): SymbolInfo[] {
   const sorted = [...symbols].sort((a, b) => a.line - b.line);
   return sorted.map((s, i) =>
-    s.kind === 'heading' && sorted[i + 1] ? { ...s, endLine: Math.max(s.line, sorted[i + 1].line - 1) } : s,
+    s.kind === 'heading' && sorted[i + 1]! ? { ...s, endLine: Math.max(s.line, sorted[i + 1]!.line - 1) } : s,
   );
 }
 
@@ -81,16 +81,20 @@ function topLevel(symbols: SymbolInfo[]): SymbolInfo[] {
 
 export function chunkFile(path: string, content: string, symbols: SymbolInfo[]): Chunk[] {
   const lines = content.split('\n');
-  if (lines[lines.length - 1] === '') lines.pop();
+  if (lines[lines.length - 1]! === '') lines.pop();
   if (symbols.length === 0) return windows(path, lines);
   const all = flatten(symbols);
   const out: Chunk[] = [];
   let cursor = 1;
   for (const top of topLevel(all)) {
     out.push(...gap(path, lines, cursor, top.line - 1));
-    const methods = all.filter((s) => s !== top && s.line > top.line && s.endLine <= top.endLine && s.kind === 'method');
+    const methods = all.filter(
+      (s) => s !== top && s.line > top.line && s.endLine <= top.endLine && s.kind === 'method',
+    );
     const big = top.endLine - top.line + 1 > BIG_CLASS && top.kind === 'class' && methods.length > 0;
-    out.push(...(big ? bigClass(path, lines, top, methods) : range(path, lines, top.line, top.endLine, qualified(top))));
+    out.push(
+      ...(big ? bigClass(path, lines, top, methods) : range(path, lines, top.line, top.endLine, qualified(top))),
+    );
     cursor = top.endLine + 1;
   }
   return out.concat(gap(path, lines, cursor, lines.length));

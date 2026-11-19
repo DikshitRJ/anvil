@@ -20,7 +20,12 @@ function indentOf(l: string): number {
 // Index of the line that ends the signature (python: line ending with ':', max 5 lines).
 function signatureEnd(lines: string[], i: number): number {
   for (let j = i; j < Math.min(lines.length, i + 5); j++) {
-    if (lines[j].replace(/\s*#.*$/, '').trimEnd().endsWith(':')) return j;
+    if (
+      lines[j]!.replace(/\s*#.*$/, '')
+        .trimEnd()
+        .endsWith(':')
+    )
+      return j;
   }
   return i;
 }
@@ -29,7 +34,7 @@ function signatureEnd(lines: string[], i: number): number {
 function indentEnd(lines: string[], from: number, indent: number, isComment: (l: string) => boolean): number {
   let last = from;
   for (let j = from + 1; j < Math.min(lines.length, from + MAX_LEN); j++) {
-    const l = lines[j];
+    const l = lines[j]!;
     if (l.trim() === '' || isComment(l.trim())) continue;
     if (indentOf(l) <= indent) break;
     last = j;
@@ -39,7 +44,7 @@ function indentEnd(lines: string[], from: number, indent: number, isComment: (l:
 
 function pythonStart(lines: string[], i: number): number {
   let s = i;
-  while (s > 0 && /^\s*@/.test(lines[s - 1])) s--;
+  while (s > 0 && /^\s*@/.test(lines[s - 1]!)) s--;
   return s;
 }
 
@@ -50,11 +55,11 @@ function extractPython(path: string, lines: string[]): SymbolInfo[] {
   lines.forEach((line, i) => {
     const m = line.match(re);
     if (!m) return;
-    const indent = m[1].length;
-    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    const indent = m[1]!.length;
+    while (stack.length && stack[stack.length - 1]!.indent >= indent) stack.pop();
     const parent = stack[stack.length - 1];
-    const isClass = m[2] === 'class';
-    stack.push({ indent, name: m[3], isClass });
+    const isClass = m[2]! === 'class';
+    stack.push({ indent, name: m[3]!, isClass });
     if (parent && !parent.isClass) return; // nested function
     const sigEnd = signatureEnd(lines, i);
     const sig = lines
@@ -62,7 +67,7 @@ function extractPython(path: string, lines: string[]): SymbolInfo[] {
       .map((l) => l.trim())
       .join(' ');
     out.push({
-      name: m[3],
+      name: m[3]!,
       kind: isClass ? 'class' : parent ? 'method' : 'function',
       path,
       line: pythonStart(lines, i) + 1,
@@ -80,14 +85,14 @@ function extractRuby(path: string, lines: string[]): SymbolInfo[] {
   lines.forEach((line, i) => {
     const m = line.match(/^(\s*)(def|class|module)\s+(?:self\.)?([\w:]+[?!=]?)/);
     if (!m) return;
-    while (stack.length && stack[stack.length - 1].indent >= m[1].length) stack.pop();
+    while (stack.length && stack[stack.length - 1]!.indent >= m[1]!.length) stack.pop();
     const parent = stack[stack.length - 1];
-    let end = indentEnd(lines, i, m[1].length, (t) => t.startsWith('#'));
-    if (lines[end + 1]?.trim() === 'end' && indentOf(lines[end + 1]) === m[1].length) end++;
-    if (m[2] !== 'def') stack.push({ indent: m[1].length, name: m[3] });
+    let end = indentEnd(lines, i, m[1]!.length, (t) => t.startsWith('#'));
+    if (lines[end + 1]?.trim() === 'end' && indentOf(lines[end + 1]!) === m[1]!.length) end++;
+    if (m[2]! !== 'def') stack.push({ indent: m[1]!.length, name: m[3]! });
     out.push({
-      name: m[3],
-      kind: m[2] === 'def' ? (parent ? 'method' : 'function') : m[2] === 'class' ? 'class' : 'module',
+      name: m[3]!,
+      kind: m[2]! === 'def' ? (parent ? 'method' : 'function') : m[2]! === 'class' ? 'class' : 'module',
       path,
       line: i + 1,
       endLine: end + 1,
@@ -127,7 +132,7 @@ function extractMarkdown(path: string, lines: string[]): SymbolInfo[] {
   const heads: { sym: SymbolInfo; level: number }[] = [];
   lines.forEach((l, i) => {
     const m = !fenced[i] && l.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
-    if (m && m[2]) heads.push({ sym: heading(path, m[2], i + 1, l.trim()), level: m[1].length });
+    if (m && m[2]!) heads.push({ sym: heading(path, m[2]!, i + 1, l.trim()), level: m[1]!.length });
   });
   return closeHeadings(heads, lines.length);
 }
@@ -136,16 +141,16 @@ const RST_CHARS = '=-~^"\'`#*+';
 
 function underlineChar(l: string): string | undefined {
   const t = l.trimEnd();
-  return t.length >= 2 && RST_CHARS.includes(t[0]) && t === t[0].repeat(t.length) ? t[0] : undefined;
+  return t.length >= 2 && RST_CHARS.includes(t[0]!) && t === t[0]!.repeat(t.length) ? t[0] : undefined;
 }
 
 function extractRst(path: string, lines: string[]): SymbolInfo[] {
   const order: string[] = [];
   const heads: { sym: SymbolInfo; level: number }[] = [];
   for (let i = 0; i + 1 < lines.length; i++) {
-    const text = lines[i].trim();
-    const u = underlineChar(lines[i + 1]);
-    if (!text || underlineChar(lines[i]) || !u || lines[i + 1].trimEnd().length < text.length) continue;
+    const text = lines[i]!.trim();
+    const u = underlineChar(lines[i + 1]!);
+    if (!text || underlineChar(lines[i]!) || !u || lines[i + 1]!.trimEnd().length < text.length) continue;
     if (!order.includes(u)) order.push(u);
     heads.push({ sym: heading(path, text, i + 1, text), level: order.indexOf(u) + 1 });
     i++;

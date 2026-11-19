@@ -58,9 +58,7 @@ const JVM: Spec = {
     { re: new RegExp(`^\\s*${JVM_MODS}enum\\s+(?:class\\s+)?(\\w+)`), kind: 'type', name: 1, holds: true },
     { re: new RegExp(`^${JVM_MODS}fun\\s+(?:<[^>]*>\\s*)?(?:[\\w.]+\\.)?(\\w+)\\s*\\(`), kind: 'function', name: 1 },
   ],
-  method: new RegExp(
-    `^\\s+${JVM_MODS}(?:fun\\s+(?:<[^>]*>\\s*)?|(?:[\\w<>\\[\\],.?]+\\s+)+)(\\w+)\\s*\\([^;]*$`,
-  ),
+  method: new RegExp(`^\\s+${JVM_MODS}(?:fun\\s+(?:<[^>]*>\\s*)?|(?:[\\w<>\\[\\],.?]+\\s+)+)(\\w+)\\s*\\([^;]*$`),
 };
 
 const RS_VIS = '(?:pub(?:\\([^)]*\\))?\\s+)?';
@@ -108,14 +106,14 @@ export function braceEnd(lines: string[], start: number): number {
   let seen = false;
   const limit = Math.min(lines.length, start + 400);
   for (let i = start; i < limit; i++) {
-    for (const ch of lines[i]) {
+    for (const ch of lines[i]!) {
       if (ch === '{') {
         depth++;
         seen = true;
       } else if (ch === '}') depth--;
     }
     if (seen && depth <= 0) return i;
-    if (!seen && (/;\s*$/.test(lines[i]) || i - start >= 4)) return i;
+    if (!seen && (/;\s*$/.test(lines[i]!) || i - start >= 4)) return i;
   }
   return limit - 1;
 }
@@ -123,7 +121,7 @@ export function braceEnd(lines: string[], start: number): number {
 function matchDecl(line: string, spec: Spec): { d: Decl; m: RegExpMatchArray } | undefined {
   for (const d of spec.decls) {
     const m = line.match(d.re);
-    if (m && !NOT_METHOD.has(m[d.name])) return { d, m };
+    if (m && !NOT_METHOD.has(m[d.name]!)) return { d, m };
   }
   return undefined;
 }
@@ -132,18 +130,18 @@ function members(lines: string[], from: number, to: number, spec: Spec, c: Symbo
   const out: SymbolInfo[] = [];
   let memberIndent = -1;
   for (let i = from + 1; i <= to && spec.method; i++) {
-    const m = lines[i].match(spec.method);
-    if (!m || NOT_METHOD.has(m[1])) continue;
-    if (memberIndent < 0) memberIndent = indentOf(lines[i]);
-    if (indentOf(lines[i]) !== memberIndent) continue;
+    const m = lines[i]!.match(spec.method);
+    if (!m || NOT_METHOD.has(m[1]!)) continue;
+    if (memberIndent < 0) memberIndent = indentOf(lines[i]!);
+    if (indentOf(lines[i]!) !== memberIndent) continue;
     out.push({
-      name: m[1],
+      name: m[1]!,
       kind: 'method',
       path: c.path,
       line: i + 1,
       endLine: Math.min(braceEnd(lines, i), to) + 1,
       container: c.name,
-      signature: lines[i].trim(),
+      signature: lines[i]!.trim(),
     });
   }
   return out;
@@ -153,21 +151,21 @@ export function extractBrace(path: string, ext: string, lines: string[]): Symbol
   const spec = BY_EXT[ext];
   const out: SymbolInfo[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const hit = matchDecl(lines[i], spec);
+    const hit = matchDecl(lines[i]!, spec as Spec);
     if (!hit) continue;
     const { d, m } = hit;
     const end = braceEnd(lines, i);
     const sym: SymbolInfo = {
-      name: m[d.name],
+      name: m[d.name]!,
       kind: d.kind,
       path,
       line: i + 1,
       endLine: end + 1,
-      signature: lines[i].trim(),
+      signature: lines[i]!.trim(),
     };
-    if (d.receiver) sym.container = m[d.receiver];
+    if (d.receiver) sym.container = m[d.receiver]!;
     out.push(sym);
-    if (d.holds) out.push(...members(lines, i, end, spec, sym));
+    if (d.holds) out.push(...members(lines, i, end, spec as Spec, sym));
     if (d.holds) i = end; // skip the body: members were handled above
   }
   return out.sort((a, b) => a.line - b.line);
