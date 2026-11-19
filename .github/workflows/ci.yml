@@ -1,0 +1,122 @@
+name: CI
+
+# Two-phase pipeline (docs/DECISIONS.md D-018).
+#   Phase 1 "quality"     : typecheck, lint, format check, bundle.
+#   Phase 2 "integration" : unit + integration tests, Flask retrieval check,
+#                           VS Code smoke tests (xvfb), TrueForge e2e.
+#   "ci-ok"               : green only when both phases succeed.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Phase 1 · Code quality & compilation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build
+
+  integration:
+    name: Phase 2 · Integration tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Retrieval check on pallets/flask 3.1.3
+        if: hashFiles('test/integration/flask.retrieval.test.ts') != ''
+        env:
+          FLASK_REPO_TAG: '3.1.3'
+        run: |
+          git clone --depth 1 --branch "$FLASK_REPO_TAG" https://github.com/pallets/flask "$RUNNER_TEMP/flask"
+          FLASK_REPO="$RUNNER_TEMP/flask" npx vitest run test/integration/flask.retrieval.test.ts
+
+      - name: Install xvfb for VS Code tests
+        if: hashFiles('test/vscode/runTests.js') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: VS Code smoke tests
+        if: hashFiles('test/vscode/runTests.js') != ''
+        run: xvfb-run -a npm run test:vscode
+
+      - name: Detect TrueForge e2e tests
+        id: e2e-detect
+        run: |
+          if [ -n "$(find test/e2e -name '*.test.ts' 2>/dev/null)" ]; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: TrueForge end-to-end
+        if: steps.e2e-detect.outputs.has_tests == 'true'
+        env:
+          TRUEFORGE_E2E: '1'
+        run: npm run test:e2e
+
+  ci-ok:
+    name: CI passed
+    needs: [quality, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both phases to succeed
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          INTEGRATION: ${{ needs.integration.result }}
+        run: |
+          echo "quality: $QUALITY"
+          echo "integration: $INTEGRATION"
+          if [ "$QUALITY" != "success" ] || [ "$INTEGRATION" != "success" ]; then
+            echo "::error::Phase 1 and Phase 2 must both succeed"
+            exit 1
+          fi

@@ -13,3 +13,4 @@ config/trueforge.local.json
 # local tooling
 .serena/
 .worktrees/
+.claude/
