@@ -15,6 +15,9 @@ import { makeFakeHost, type FakeHost } from '../helpers/fakeHost';
 import { startMockLlm, type MockLlm } from './mockLlm';
 import { startTrueForge, type TrueForgeProcess } from './trueforge';
 
+// npx may download TrueForge and the health wait is up to 150 s, so setup gets a long hook budget.
+const SETUP_TIMEOUT_MS = 300_000;
+const TEARDOWN_TIMEOUT_MS = 30_000;
 const APP = 'src/app.py';
 const ORIGINAL = 'def greet():\n    return "hello"\n';
 const CODER_INPUT = 'Make greet return hello, world';
@@ -119,14 +122,14 @@ describe.skipIf(!process.env.TRUEFORGE_E2E)('TrueForge end-to-end', () => {
     bridge = await startBridge({ host, gate: makeGate(), port: 0, token });
     const report = await ensureSetup(client, { mcpUrl: bridge.url, token, agents: [defs.coder, defs.inline] });
     expect(report.errors).toEqual([]);
-  });
+  }, SETUP_TIMEOUT_MS);
 
   afterAll(async () => {
     for (const s of sessions) s.dispose();
     await bridge?.close().catch(() => undefined);
     await tf?.stop().catch(() => undefined);
     await mock?.close().catch(() => undefined);
-  });
+  }, TEARDOWN_TIMEOUT_MS);
 
   beforeEach(() => {
     host.files.clear();
