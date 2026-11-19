@@ -17,6 +17,11 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.browser } },
   },
   {
+    files: ['test/vscode/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.mocha } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: ['src/core/**/*.ts'],
     rules: {
       'no-restricted-imports': [

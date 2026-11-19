@@ -17,7 +17,9 @@
       "dynamic_sub_agents": { "enabled": true },
       "ask_user_questions": { "enabled": true },
       "generative_ui": { "enabled": false },
-      "context_management": { "compaction": { "enabled": true, "trigger": { "type": "input_tokens", "value": 60000 } } },
+      "context_management": {
+        "compaction": { "enabled": true, "trigger": { "type": "input_tokens", "value": 60000 } }
+      },
       "iteration_limit": 60
     }
   }

@@ -18,7 +18,9 @@
       "type": "custom",
       "name": "ollama",
       "base_url": "http://localhost:11434/v1",
-      "models": [{ "model_id": "qwen2.5-coder:14b", "name": "qwen2-5-coder-14b", "properties": { "context_length": 32768 } }]
+      "models": [
+        { "model_id": "qwen2.5-coder:14b", "name": "qwen2-5-coder-14b", "properties": { "context_length": 32768 } }
+      ]
     }
   ],
   "models": ["groq/llama-3-3-70b", "ollama/qwen2-5-coder-14b"]
