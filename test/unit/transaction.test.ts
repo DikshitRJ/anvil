@@ -120,3 +120,64 @@ describe('onChange', () => {
     expect(fn).toHaveBeenCalledTimes(3);
   });
 });
+
+describe('base snapshots (issue 45)', () => {
+  it('revertRun restores the true base after undo-list eviction', async () => {
+    const { fs, cp } = setup(2);
+    fs.files.set('a', 'v4');
+    rec(cp, 'r', 'a', 'v0', 'v1');
+    rec(cp, 'r', 'a', 'v1', 'v2');
+    rec(cp, 'r', 'a', 'v2', 'v3');
+    rec(cp, 'r', 'a', 'v3', 'v4');
+    expect(cp.list()).toHaveLength(2);
+    const rep = await cp.revertRun('r');
+    expect(rep.restored).toEqual(['a']);
+    expect(fs.files.get('a')).toBe('v0');
+  });
+  it('keeps bases of recent runs when other runs evict undo entries', async () => {
+    const { fs, cp } = setup(1);
+    fs.files.set('a', 'a1');
+    rec(cp, 'r1', 'a', 'a0', 'a1');
+    for (let i = 0; i < 10; i++) rec(cp, 'r2', `x${i}`, null, 'x');
+    rec(cp, 'r1', 'a', 'a1', 'a1');
+    await cp.revertRun('r1');
+    expect(fs.files.get('a')).toBe('a0');
+  });
+  it('caps retained base snapshots by run count', async () => {
+    const fs = new MemStore();
+    const capped = new CheckpointStore(fs, 10, 2);
+    fs.files.set('a', 'n');
+    capped.record({ runId: 'r1', path: 'a', before: 'orig', after: 'n', summary: 's' });
+    capped.record({ runId: 'r2', path: 'b', before: null, after: 'n', summary: 's' });
+    capped.record({ runId: 'r3', path: 'c', before: null, after: 'n', summary: 's' });
+    await capped.revertRun('r1');
+    expect(fs.files.get('a')).toBe('orig');
+  });
+});
+
+describe('revertRun with fully evicted paths', () => {
+  it('restores the base for a path whose undo entries were all evicted', async () => {
+    const { fs, cp } = setup(2);
+    fs.files.set('a', 'a1');
+    rec(cp, 'r', 'a', 'a0', 'a1');
+    rec(cp, 'r', 'b', null, 'b1');
+    rec(cp, 'r', 'c', null, 'c1');
+    expect(cp.forRun('r').map((e) => e.path)).toEqual(['b', 'c']);
+    fs.files.set('b', 'b1');
+    fs.files.set('c', 'c1');
+    const rep = await cp.revertRun('r');
+    expect(rep.restored.sort()).toEqual(['a', 'b', 'c']);
+    expect(fs.files.get('a')).toBe('a0');
+  });
+  it('reports a conflict for an evicted path changed since, unless forced', async () => {
+    const { fs, cp } = setup(1);
+    fs.files.set('a', 'edited');
+    rec(cp, 'r', 'a', 'a0', 'a1');
+    rec(cp, 'r', 'b', null, 'b1');
+    fs.files.set('b', 'b1');
+    const rep = await cp.revertRun('r');
+    expect(rep).toEqual({ restored: ['b'], conflicts: ['a'] });
+    await cp.revertRun('r', { force: true });
+    expect(fs.files.get('a')).toBe('a0');
+  });
+});

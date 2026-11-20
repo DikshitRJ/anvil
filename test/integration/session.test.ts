@@ -148,6 +148,23 @@ describe('AnvilSession', () => {
     });
   });
 
+  it('tells the model when the user dismissed ask_user_question', async () => {
+    mock.push({
+      steps: [
+        emit(E.created()),
+        emit(E.message('m1', null, [E.askCall('c1', 'Which?', ['x', 'y'])])),
+        emit(E.responseRequired('c1', 'm1')),
+        emit(E.paused()),
+        'pause',
+        emit(E.running()),
+        emit(E.done('fine')),
+      ],
+    });
+    const res = await make().run('go', { ...allow, onQuestion: () => Promise.resolve('') });
+    expect(res.status).toBe('done');
+    expect(answers()[0]?.body.events[0].content).toBe('The user dismissed the question without answering.');
+  });
+
   it('cancels a hanging turn promptly', async () => {
     mock.push({ steps: [emit(E.created()), 'hang'] });
     const s = make();

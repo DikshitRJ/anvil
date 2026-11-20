@@ -1,11 +1,11 @@
 // WorkspaceHost implementation backed by VS Code: open-buffer-aware reads with a symlink-escape guard,
 // index-based file listing, and diagnostics. Writes and commands are delegated.
 import * as path from 'node:path';
-import picomatch from 'picomatch';
 import * as vscode from 'vscode';
 import type { CodeIndex } from '../core/context/codeIndex';
 import { resolveInWorkspace, toRelative } from '../core/paths';
 import type { DiagnosticInfo, WorkspaceHost } from '../mcp/server';
+import { filterFiles } from '../core/fileList';
 import { assertRealPathInside } from './realPath';
 
 export interface HostDelegates {
@@ -44,12 +44,7 @@ export class VsCodeWorkspaceHost implements WorkspaceHost {
   }
 
   async listFiles(dir = '', glob?: string, limit = 200): Promise<string[]> {
-    const prefix = dir && dir !== '.' ? dir.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/?$/, '/') : '';
-    const match = glob ? picomatch(glob, { dot: true, matchBase: !glob.includes('/') }) : () => true;
-    return this.index
-      .files()
-      .filter((f) => f.startsWith(prefix) && match(f.slice(prefix.length)))
-      .slice(0, limit);
+    return filterFiles(this.index.files(), dir, glob, limit);
   }
 
   private inRoot(fsPath: string): boolean {

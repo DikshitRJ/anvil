@@ -24,7 +24,8 @@ export function canonicalKey(tool: string, args: unknown): string {
 
 export interface LedgerEntry {
   finalContent: string | null;
-  acceptedHunks: number[];
+  /** @deprecated unused; kept optional for compatibility. */
+  acceptedHunks?: number[];
   totalHunks: number;
   feedback: string;
 }
@@ -42,7 +43,8 @@ export class ApprovalLedger {
   take(key: string): LedgerEntry | undefined {
     const v = this.entries.get(key);
     this.entries.delete(key);
-    return v?.entry;
+    if (!v || Date.now() - v.at > TTL_MS) return undefined;
+    return v.entry;
   }
   clear(): void {
     this.entries.clear();

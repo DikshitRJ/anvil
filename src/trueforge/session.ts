@@ -46,6 +46,7 @@ const MAX_RESUBSCRIBES = 3;
 const RETRY_NOTE =
   '[Anvil] The previous attempt failed and any file changes it made were reverted. Re-read files before editing.\n\n';
 const DEFAULT_ANSWER = 'Proceed with your best judgement.';
+const DISMISSED_ANSWER = 'The user dismissed the question without answering.';
 
 export class AnvilSession {
   private id?: string;
@@ -220,7 +221,9 @@ export class AnvilSession {
     let stream = first;
     let resubs = 0;
     for (;;) {
+      this.drainEvents = 0;
       const r = await this.drain(stream, hooks);
+      if (this.drainEvents > 0) resubs = 0; // healthy progress: transient drops only count when consecutive
       if (r === 'cancelled') return { kind: 'cancelled' };
       if (r === 'stall') return { kind: 'failure', phase: 'stall', message: 'stream stalled' };
       const view = this.reducer.view();
@@ -256,6 +259,8 @@ export class AnvilSession {
 
   // ---- reading events ----
 
+  private drainEvents = 0;
+
   private async drain(stream: Stream, hooks: RunHooks): Promise<Drain> {
     const it = stream[Symbol.asyncIterator]();
     try {
@@ -265,6 +270,7 @@ export class AnvilSession {
         if (r.done) return 'ended';
         const ev = r.value as { type: string; state?: { status?: string } };
         this.received = true;
+        this.drainEvents++;
         this.reducer.apply(ev);
         hooks.onEvent?.(ev, this.reducer.view());
         if (ev.type === 'turn.done') return 'terminal';
@@ -326,7 +332,8 @@ export class AnvilSession {
       const q = typeof call.input.question === 'string' ? call.input.question : '';
       const options = Array.isArray(call.input.options) ? call.input.options.map(String) : [];
       const content = hooks.onQuestion ? await this.unlessCancelled(hooks.onQuestion(q, options)) : DEFAULT_ANSWER;
-      return { type: 'user.tool_response', content: content || DEFAULT_ANSWER, ...ids };
+      const answer = hooks.onQuestion ? content || DISMISSED_ANSWER : DEFAULT_ANSWER;
+      return { type: 'user.tool_response', content: answer, ...ids };
     }
     const review = hooks
       .onApproval({ call })
