@@ -35,3 +35,26 @@ describe('explicit esm and commonjs typescript imports', () => {
     ]);
   });
 });
+
+describe('python import graph contracts', () => {
+  it('resolves aliased modules in flat and src layouts', () => {
+    expect(resolve('app.py', 'import alpha as a, beta', ['alpha.py', 'src/beta/__init__.py'])).toEqual([
+      'alpha.py',
+      'src/beta/__init__.py',
+    ]);
+  });
+  it('resolves relative siblings and parent packages without self edges', () => {
+    expect(
+      resolve('pkg/sub/main.py', 'from .. import helpers\nfrom . import main', ['pkg/helpers.py', 'pkg/sub/main.py']),
+    ).toEqual(['pkg/helpers.py']);
+  });
+  it('includes package initializers and imported child modules only once', () => {
+    expect(
+      resolve('app.py', 'from pkg import child as alias\nimport pkg', ['pkg/__init__.py', 'pkg/child.py']),
+    ).toEqual(['pkg/__init__.py', 'pkg/child.py']);
+  });
+  it('ignores comment-only imports and unsupported file types', () => {
+    expect(extractImports('a.py', '# import fake\n# from fake import nope')).toEqual([]);
+    expect(extractImports('a.txt', 'import fake')).toEqual([]);
+  });
+});
