@@ -163,3 +163,35 @@ the bridge, and drive `AnvilSession` through search → edit (approval) → done
 provider and the mock to prove fallback.
 **Consequences.** Verifies wire compatibility on every push. (Running TrueForge locally from the agent session was
 blocked by policy, so CI is where this runs.)
+
+## D-020 — Releases only from version tags on main
+**Context.** The user asked for the built extension to land in GitHub Releases on every build run, with runs only on
+version tags pushed to main.
+**Decision.** `build.yml` triggers on `v*` tags only, verifies the tagged commit is on main, stamps the version from
+the tag, and attaches `anvil-<tag>.vsix` to the release (creating or updating it). CI phase 1 still runs
+`npm run package` on every push so packaging regressions are caught early.
+**Supersedes** the build-on-every-push part of D-018.
+
+## D-021 — Agent definitions stay in TrueForge's snake_case wire format
+**Context.** The SDK's `AgentSpec` type is camelCase, but TrueForge's docs, UI and API speak snake_case.
+**Decision.** `agent/*.json` stays snake_case (human-readable, copy-pasteable into TrueForge). `toSdkSpec` converts
+to the SDK type, preserving `model.params` keys verbatim; a unit test round-trips both definitions through the SDK's
+own serializer.
+
+## D-022 — Loopback allowlist is a documented setup requirement
+**Context.** The real-TrueForge e2e run showed TrueForge's outbound network policy blocks `127.0.0.1`/`localhost`
+by default, which breaks both Anvil's MCP bridge and local model servers.
+**Decision.** Setup instructions start TrueForge with `OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]'`;
+the setup script and Doctor print this hint. We do not try to tunnel around the policy.
+
+## D-023 — Sessions keep a busy signal; stall detection pauses during tool calls
+**Context.** TrueForge emits no events while it waits on a long MCP call (commands, interactive reviews), which the
+45 s stall watchdog misread as a dead model.
+**Decision.** `AnvilSession` accepts `isBusy()`; the host counts in-flight bridge calls. The watchdog re-arms while
+busy, and a real stall also cancels pending reviews and kills commands before retrying.
+
+## D-024 — Approvals are scoped to a run
+**Context.** Review found approvals could outlive a cancelled run and be replayed silently.
+**Decision.** Ledger keys are `runId|canonicalKey`, the approval flow is cleared at run end, on cancel and before a
+retry, and `isRunActive()` is false as soon as a run is cancelled. A write whose target changed while its review was
+open is refused, so the agent must re-read and propose again.
