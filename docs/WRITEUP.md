@@ -56,7 +56,8 @@ Models used for this submission:
 | --- | --- | --- | --- |
 | Scripted OpenAI-compatible mock (`test/e2e/mockLlm.ts`) | Registered in a real TrueForge as a `custom` provider; ran on GitHub Actions runners | End-to-end CI of the agent loop, approvals, cancel and fallback | $0 |
 | `broken/broken-model` (unreachable endpoint) | Registered in TrueForge on GitHub Actions | Proves automatic fallback and clean failure (Task C) | $0 |
-| Demo model(s) | _to be filled by the team after recording (e.g. a hosted API primary + local Ollama fallback)_ | Tasks A–C in the video | _to be filled_ |
+| `ollama/gemma4-12b` (Gemma 4 12B via Ollama, OpenAI-compatible) and a 16k-context variant | Local, RTX 5050 Laptop GPU (8 GB) | Live QA of Tasks A–C against a real TrueForge 0.185.1: Task A and Task C passed end to end; Task B ran the full tool loop but a 12B model at 16k context could not finish the 3-file change | $0 |
+| Demo model(s) | _to be filled by the team after recording (a stronger hosted model is recommended for Task B)_ | Tasks A–C in the video | _to be filled_ |
 
 ## 6. Scorecard
 

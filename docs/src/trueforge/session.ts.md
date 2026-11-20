@@ -25,3 +25,4 @@ Runs one user request as a TrueForge turn: streams events, answers approval and 
 
 **Notes**
 - Both `retry` and `switch` call `beforeRetry` exactly once per recovery, so the host can revert writes before the next attempt.
+- The stall watchdog is paused while the host reports busy (`isBusy`) and between `thread.context_compaction_started` and `thread.context_compaction_finished`, because TrueForge emits no events while it compacts history.

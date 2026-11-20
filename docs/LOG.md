@@ -84,3 +84,24 @@ Chronological log of major actions, phase outcomes and notable events. Times are
   now live in `openspec/specs/`.
 - Final state: 0 open issues; main CI green (lint, types, format, package; 257 unit/integration tests; real-TrueForge
   e2e; VS Code smoke suite).
+
+### Live QA against a real TrueForge (user-started, 2026-11-20)
+- The user started TrueForge locally (the classifier had blocked the agent from doing so). First start failed:
+  zsh exports `HOST=<hostname>`, which TrueForge uses as its bind address → documented `HOST=localhost` (#61).
+- `npm run setup:trueforge` failed every registration (snake_case vs the SDK's camelCase; un-awaited
+  `agents.list()`) → fixed and verified live (#62).
+- Model: local Ollama `gemma4:12b` (8 GB GPU). Results, all in an isolated VS Code profile with the released vsix:
+  - **Task A — pass.** Live streaming diff, per-hunk accept, `FLASK_DEBUG=off … print(get_debug_flag())` → `False`;
+    Undo Last Applied Change restored the file (`git status` clean).
+  - **Task C — pass.** Chain `[broken/broken-model, ollama/gemma4-12b]`: automatic fallback toast, diff from the
+    second model, Reject all → `git status` clean. All-broken chain: one clear error + Open Doctor, clean tree.
+  - **Task B — tool loop works, model too small to finish.** Context plan named cli.py, test_cli.py, docs/cli.rst;
+    the agent used Anvil's MCP tools via deferred `call_tool`, compaction ran, cancel worked. A 12B model at 16k
+    context kept re-reading cli.py after each compaction and never proposed edits. Use a stronger model for Task B.
+- Bugs found and fixed from this round: review CodeLens invisible by default (`diffEditor.codeLens` off → shipped
+  as a configuration default plus Alt+Y/Alt+N and title buttons, #58); inline fallback didn't update the status bar
+  (#59); Ollama silently truncating prompts to its default `num_ctx` → truncation warning + README guidance (#60);
+  `run_command` ignored `anvil.commandTimeoutSec` (#61); fixed 60k compaction trigger never fired on small models
+  → TrueForge's context-relative default, 250-line reads (#64, D-025); stall watchdog fired during compaction →
+  paused while compacting, 120 s default (#65); Stop button disabled during runs (#66); stale summary lens (#67).
+- Releases: v0.1.3, v0.1.4, v0.1.5 (each verified locally from GitHub Releases).
