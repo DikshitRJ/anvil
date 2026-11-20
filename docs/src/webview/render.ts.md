@@ -24,3 +24,4 @@ Renders `PanelState` into the DOM: builds the panel skeleton and patches keyed e
 
 **Notes**
 - `toolGlyph` picks an icon by regex on the tool name (search, read, edit, command) and falls back to a gear.
+- The composer button is re-evaluated on every render: as **Stop** it is always enabled; as **Send** it is enabled only when the textarea has text.
