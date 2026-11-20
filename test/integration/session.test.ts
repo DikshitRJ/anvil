@@ -249,6 +249,30 @@ describe('AnvilSession', () => {
     expect((await p).status).toBe('cancelled');
   });
 
+  it('does not stall-abort while TrueForge is compacting history', async () => {
+    mock.push({
+      steps: [
+        emit(E.created()),
+        emit({
+          type: 'thread.context_compaction_started',
+          id: 'cmp-1',
+          thread_id: 'main',
+          created_at: new Date().toISOString(),
+          trigger: { type: 'context_threshold_exceeded', context_tokens: 13500, threshold_tokens: 13107 },
+        }),
+        'hang',
+      ],
+    });
+    const onRetry = vi.fn();
+    const s = make(['a'], 100);
+    const p = s.run('go', { ...allow, onRetry });
+    await new Promise((r) => setTimeout(r, 450));
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(mock.find('POST', '/cancel')).toHaveLength(0);
+    await s.cancel();
+    expect((await p).status).toBe('cancelled');
+  });
+
   it('stall-aborts when idle even with an isBusy hook', async () => {
     mock.push({ steps: [emit(E.created()), 'hang'] }, simple('after stall'));
     const res = await make(['a'], 100, url, () => false).run('go', allow);

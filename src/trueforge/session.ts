@@ -260,6 +260,8 @@ export class AnvilSession {
   // ---- reading events ----
 
   private drainEvents = 0;
+  /** True between thread.context_compaction_started and _finished: TrueForge emits nothing while it summarises. */
+  private compacting = false;
 
   private async drain(stream: Stream, hooks: RunHooks): Promise<Drain> {
     const it = stream[Symbol.asyncIterator]();
@@ -272,6 +274,7 @@ export class AnvilSession {
         this.received = true;
         this.drainEvents++;
         this.reducer.apply(ev);
+        this.trackCompaction(ev.type);
         hooks.onEvent?.(ev, this.reducer.view());
         if (ev.type === 'turn.done') return 'terminal';
         if (ev.type === 'turn.update' && ev.state?.status === 'paused') return 'paused';
@@ -279,6 +282,11 @@ export class AnvilSession {
     } finally {
       void Promise.resolve(it.return?.()).catch(() => undefined);
     }
+  }
+
+  private trackCompaction(type: string): void {
+    if (type === 'thread.context_compaction_started') this.compacting = true;
+    else if (type === 'thread.context_compaction_finished' || type === 'turn.done') this.compacting = false;
   }
 
   private async nextEvent(it: AsyncIterator<TrueForgeApi.TurnStreamingEvent>) {
@@ -289,7 +297,8 @@ export class AnvilSession {
       const stall = new Promise<'stall'>((r) => (timer = setTimeout(() => r('stall'), this.opts.stallTimeoutMs)));
       const r = await Promise.race([next, stall, this.cancelSignal]).finally(() => clearTimeout(timer));
       if (r !== 'stall') return r;
-      if (this.opts.isBusy?.()) continue; // host is mid tool call: re-arm instead of aborting
+      // Host mid tool call, or TrueForge compacting history: legitimately silent, so re-arm instead of aborting.
+      if (this.compacting || this.opts.isBusy?.()) continue;
       this.controller.abort();
       void this.serverCancel();
       return r;

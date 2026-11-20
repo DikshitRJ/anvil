@@ -226,9 +226,9 @@
         },
         "anvil.stallTimeoutSec": {
           "type": "number",
-          "default": 45,
+          "default": 120,
           "minimum": 1,
-          "description": "No-event timeout in seconds; treated as a transient failure."
+          "description": "No-event timeout in seconds (paused while a tool call or TrueForge compaction is in progress); treated as a transient failure. Local models processing large prompts may need more."
         },
         "anvil.contextBudget": {
           "type": "number",

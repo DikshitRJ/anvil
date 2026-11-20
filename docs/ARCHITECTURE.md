@@ -122,7 +122,7 @@ stateDiagram-v2
   GiveUp --> [*]: clear message + Doctor
 ```
 
-Stall detection: if no event arrives within `anvil.stallTimeoutSec` (default 45 s) while the turn runs, the
+Stall detection: if no event arrives within `anvil.stallTimeoutSec` (default 120 s; paused while a tool call or a TrueForge compaction is in progress) while the turn runs, the
 attempt is cancelled and classified as transient.
 
 ## 4. Context Engine
@@ -383,7 +383,7 @@ export type WebviewToHost =
 | `trueforgeUrl` | `http://localhost:8790` | TrueForge base URL |
 | `models` | `[]` (must be set; Doctor warns) | Ordered model chain (`provider/model` FQNs configured in TrueForge) |
 | `retriesPerModel` | `1` | Transient retries before switching |
-| `stallTimeoutSec` | `45` | No-event timeout → transient failure |
+| `stallTimeoutSec` | `120` | No-event timeout → transient failure (paused during tool calls and TrueForge compaction) |
 | `contextBudget` | `12000` | Push-context token budget |
 | `mcpPort` | `7801` | MCP bridge port (127.0.0.1) |
 | `cancelBehavior` | `revert` | `revert` rolls back a cancelled run's applied changes; `keep` keeps accepted ones |
