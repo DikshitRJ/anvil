@@ -1,25 +1,20 @@
 # `src/host/statusBar.ts`
 
 **Purpose**
-This file manages the status bar item for the Anvil extension. It displays the current model, indexing progress, running state, and TrueForge connection status. It also handles the visual styling and tooltips for the status bar.
+Status bar item showing the active model and the indexing, running and TrueForge-down states. Clicking it runs `anvil.focusPanel`.
 
 **Exports**
-* AnvilStatusBar (class): Implements `vscode.Disposable` to manage the status bar item lifecycle.
+- `AnvilStatusBar` (implements `vscode.Disposable`): `setConfig(models, url)`, `setModel(model)`, `setIndexing(files | undefined)`, `setRunning(bool)`, `setHealth(ok)`, `dispose()`.
 
 **Collaborators**
-* Imports: `vscode` is used to create and manage the `StatusBarItem`.
-* Exports used by: Not visible from this file.
+- Imports: `vscode`.
+- Used by: `extension.ts`, `runController.ts` (`setRunning`, `setModel`), `indexService` status callback, `healthLoop` callback.
 
 **Key behaviour and invariants**
-* The status bar item is aligned to the left with a priority of 100.
-* Clicking the status bar item triggers the `anvil.focusPanel` command.
-* The `render` method updates the text based on the priority: running state, then down state, then indexing state.
-* The `indexing` state displays the number of files when the value is not `undefined`.
-* The `down` state sets the background color to `statusBarItem.warningBackground` only if `running` is false.
-* The tooltip displays the model chain joined by ` → ` or `(none — set anvil.models)` if empty.
-* The `model` defaults to `no model set` if the string is empty.
+- Left aligned, priority 100. Text priority: running (`Anvil · <model>` with spinner), then TrueForge down (warning icon), then indexing (`indexing... (N files)`), else the flame icon and model; the model shows "no model set" when empty.
+- `setIndexing(undefined)` means the index is ready; `setHealth(ok)` stores `down = !ok`.
+- The warning background is used only when TrueForge is down and no run is active.
+- Tooltip lists the model chain joined by arrows (or "none - set anvil.models") and the TrueForge URL. `setConfig` resets the shown model to the first configured model; `setModel` shows a fallback model after a switch.
 
 **Notes**
-* `setHealth` inverts the boolean input to set the `down` property.
-* `setIndexing` accepts `number | undefined`, where `undefined` indicates the index is ready.
-* `dispose` cleans up the `StatusBarItem` resource.
+- State starts as "indexing, 0 files" until the index service reports.

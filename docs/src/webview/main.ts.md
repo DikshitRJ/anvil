@@ -1,23 +1,22 @@
 # `webview/main.ts`
 
 **Purpose**
-This file manages the webview user interface. It connects host messages to the state reducer and handles DOM events.
+Webview entry point: wires host messages to the state reducer and renderer, and DOM events to typed `WebviewToHost` messages.
 
 **Exports**
-* Not visible from this file.
+- None (side-effect entry script, bundled to `dist/webview.js`).
 
 **Collaborators**
-* Imports: `../src/panel/protocol`, `./render`, `./state`
-* Exports: Not visible from this file.
+- Imports: `../src/panel/protocol` (types), `./render` (`mount`, `render`, `recordToggle`, `Refs`), `./state` (`reduce`, `initialState`, `PanelState`).
+- Used by: loaded by `src/panel/panelProvider.ts`.
 
 **Key behaviour and invariants**
-* The file limits the number of saved runs to 20.
-* The `persist` function saves the current state to the host.
-* The `update` function refreshes the UI and saves the state.
-* The `sendMessage` function only sends a message if the state is not running.
-* The `mentionTimer` uses a 120ms delay for queries.
-* The `autoGrow` function limits the input height to 8 line heights.
-* The `mentionKey` function intercepts keyboard events for the mention dropdown.
+- State is the pure result of `reduce(state, hostMessage)`; every update re-renders and persists via `vscode.setState`, keeping only the last 20 runs.
+- `restore()` reloads saved state only if it has a `runs` array (otherwise `initialState()`); it always resets `running` to false and clears the mention list, because a reloaded webview cannot still be mid-run (the host replays `init`, `health`, `changes` on `ready`).
+- Composer: Enter sends (Shift+Enter inserts a newline), nothing is sent while a run is active or the text is empty; Escape while running posts `cancel`. The textarea auto-grows to at most 8 line heights. IME composition keys are ignored.
+- Mentions: an `@token` at the caret (preceded by start or whitespace) triggers a `mentionQuery` after a 120 ms debounce; results are shown only if their `query` still equals the current token (stale results are hidden). Arrow keys move, Enter/Tab insert (`@path` or `@#symbol` plus a space), Escape closes, a mouse click inserts.
+- Buttons use delegated `data-action` clicks mapped to messages: `send`, `cancel`, `newChat`, `doctor`, `openSession`, `approve` (id, allow), `openFile` (path, line), `undoChange` (seq), `revertRun` (runId), `notice-action`. `<details>` open/close is recorded so it survives re-render.
+- Sends `ready` on startup, which makes the host flush its queue and replay state.
 
 **Notes**
-* The `restore` function resets the state to the initial state if the saved state is invalid or missing runs.
+- No business logic lives here; approvals and reverts are decided by the host.

@@ -1,30 +1,20 @@
 # `src/panel/panelProvider.ts`
 
 **Purpose**
-Hosts the Anvil panel webview by managing message forwarding between the extension and the webview. It ensures messages are queued until the webview is ready and handles state replay for specific message types.
+Hosts the Anvil side-panel webview: strict-CSP HTML, message forwarding, and a ready-gated outbound queue. No business logic.
 
 **Exports**
-* PanelProvider (class): Implements `vscode.WebviewViewProvider` to manage the webview lifecycle and messaging.
+- `PanelProvider(extensionUri, onMessage)` (implements `vscode.WebviewViewProvider`): static `viewType = 'anvil.panel'`, `resolveWebviewView`, `post(msg)`, `reveal()`.
 
 **Collaborators**
-* Imports:
-    * `node:crypto`: Provides `randomBytes` for generating CSP nonces.
-    * `vscode`: Provides the `WebviewViewProvider` interface and URI utilities.
-    * `./messageQueue`: Provides the `enqueue` function to manage the message queue.
-    * `./protocol`: Provides `HostToWebview` and `WebviewToHost` types for message definitions.
-* Exports used by: Not visible from this file.
+- Imports: `node:crypto`, `vscode`, `./messageQueue`, `./protocol`.
+- Used by: `extension.ts` (receives messages into `RunController.onPanelMessage`).
 
 **Key behaviour and invariants**
-* `viewType` is set to `'anvil.panel'`.
-* `REPLAYED` messages include `'init'`, `'health'`, and `'changes'`.
-* `resolveWebviewView` sets `localResourceRoots` to `dist` and `media` directories.
-* `post` stores the latest value of `REPLAYED` types in a `last` map.
-* `receive` sets `ready` to `true` when a `'ready'` message is received.
-* `receive` prepends replayed messages to the queue before messages that are not in the replay set.
-* `flush` only sends messages if `view` is defined and `ready` is `true`.
-* `html` generates a Content-Security-Policy with a 16-byte base64 nonce.
+- Messages are queued until a view exists and the webview has sent `ready`, then flushed in order and the queue emptied. `ready` resets to false when a view is (re)resolved or disposed.
+- The latest `init`, `health` and `changes` messages are remembered; on `ready` they are replayed ahead of the queue so a reloaded webview regains its state. Other messages (runs, text, approvals) are not replayed.
+- Webview options: scripts enabled, resources limited to the extension's `dist` and `media` folders. HTML loads `dist/webview.js` and `webview.css` with a CSP of `default-src 'none'` and a per-load 16-byte random nonce for the script.
+- Every webview message, including `ready`, is forwarded to `onMessage`.
 
 **Notes**
-* `resolveWebviewView` resets `ready` to `false` and clears the `view` on disposal.
-* `flush` clears the `queue` immediately after capturing the `pending` array.
-* `reveal` executes the `anvil.panel.focus` command.
+- The view is registered with `retainContextWhenHidden` in `extension.ts`. `reveal` runs `anvil.panel.focus`.

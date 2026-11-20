@@ -1,28 +1,25 @@
 # `src/core/agent/events.ts`
 
 **Purpose**
-This file manages the state of a conversation turn. It converts raw SDK events into a structured view for the user interface.
+Folds the raw TrueForge SDK turn events into one UI-friendly `TurnView` snapshot.
 
 **Exports**
-* ToolStatus('streaming' | 'awaiting-approval' | 'running' | 'done' | 'denied' | 'error'): type - Defines the possible states of a tool call.
-* ToolCallView: interface - Defines the structure of a tool call for the UI.
-* MessageView: interface - Defines the structure of a message for the UI.
-* ThreadView: interface - Defines the structure of a thread for the UI.
-* TurnView: interface - Defines the structure of the complete turn snapshot.
-* TurnReducer: class - Manages the state of a turn and processes incoming events.
+- `ToolStatus`: `streaming | awaiting-approval | running | done | denied | error`.
+- `ToolCallView`, `MessageView`, `ThreadView`, `TurnView` (`turnId`, `status` running/paused/done/cancelled/error, messages, toolCalls, threads, `pending`, `error`, `output`, `lastEventId`, `metrics`).
+- `TurnReducer`: `apply(event)`, `view()`, `toolCall(id)`, `reset()`.
 
 **Collaborators**
-* Imports: @truefoundry/trueforge-sdk, ./toolCalls
-* Exports: Not visible from this file.
+- Imports: `@truefoundry/trueforge-sdk` (`isEventDelta`, `mergeEventDelta`), `./toolCalls`.
+- Used by: `trueforge/session.ts`, `host/runController.ts`, panel events.
 
 **Key behaviour and invariants**
-* The `RESULT_LIMIT` constant limits tool results to 2000 characters.
-* The `apply` method ignores events without a string type.
-* The `reset` method clears all internal maps, sets, and arrays.
-* The `view` method returns a deep copy of the current state.
-* `textOf` returns an empty string if content is not a string or an array.
-* `pending` calls are cleared when a tool response or user response is received.
+- `apply` ignores events without a string `type` and records `lastEventId` (used to resume the stream).
+- `model.message` stores a full message (complete); `model.message.delta` merges into a message and marks it complete when `finishReason` is set. Tool calls in an incomplete message show `streaming`, in a complete one `running`.
+- `tool.approval_required` marks calls `awaiting-approval` and adds them to `pending` (no duplicates); `tool.response_required` marks them `running` and also adds to `pending`.
+- `user.tool_approval` sets `denied` (approval status `deny`) or `running`, and clears pending. `tool.response` sets `done` with the result text cut to 2000 characters (`RESULT_LIMIT`) and clears pending. `user.tool_response` only clears pending.
+- `turn.update` yields `paused` or `running`. `turn.done` yields `done` (with output text), `cancelled` (error = reason) or `error` (error = message), and empties `pending`.
+- `thread.done` marks the thread `error` if its state status is `error`, else `done`.
+- `view()` returns copies, so callers cannot mutate reducer state. `reset()` clears everything back to `running`.
 
 **Notes**
-* `TurnReducer` handles both model message deltas and full message events.
-* `TurnView` status can be 'running', 'paused', 'done', 'cancelled', or 'error'.
+- `textOf` joins `text` parts of array content and returns `''` for other shapes.

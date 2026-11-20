@@ -1,23 +1,22 @@
 # `src/core/context/imports.ts`
 
 **Purpose**
-This file extracts and resolves file imports for Python and JavaScript/TypeScript files. It helps build a 1-hop import graph for the project.
+Extracts and resolves imports (Python, TS/JS) for the 1-hop import graph.
 
 **Exports**
-* ImportSpec(dots: number, module: string, names: string[]): ImportSpec - interface. It defines the structure of an extracted import.
-* extractImports(rel: string, content: string): ImportSpec[] - function. It identifies import statements from a file's content based on its file extension.
-* resolveImports(rel: string, specs: ImportSpec[], known: ReadonlySet<string>): string[] - function. It returns a list of file paths that the input file imports.
+- `ImportSpec`: `dots` (Python relative level, 0 = absolute), `module`, `names` (Python `from m import a, b`).
+- `extractImports(rel, content)`: regex extraction chosen by file extension.
+- `resolveImports(rel, specs, known)`: indexed files that `rel` imports.
 
 **Collaborators**
-* Imports: node:path
-* Exports: Not visible from this file.
+- Imports: `node:path`.
+- Used by: `codeIndex.ts`.
 
 **Key behaviour and invariants**
-* The function `extractImports` returns an empty array if the file extension matches neither Python nor the defined JavaScript extensions.
-* `resolveImports` only returns paths that exist in the `known` set.
-* `resolveImports` excludes the file that is currently being processed (the `rel` path).
-* Python candidate resolution includes both the module file and the `__init__.py` file.
-* JavaScript candidate resolution includes the base path, paths with extensions, and `index` files.
+- `.py` files use Python `from x import y` and `import a, b` line patterns; `.ts .tsx .js .jsx .mjs .cjs` files only extract relative specifiers (starting with `.`) from `from`, `import(...)` and `require(...)`. Bare package imports are ignored. Other extensions give `[]`.
+- Python candidates: `module.py` and `module/__init__.py` (plus `module/<name>.py` for imported names), searched from the importing file's directory for relative imports, or from the root and `src/` for absolute ones.
+- JS candidates: the path as written (if it has a known extension), then each extension appended, then `index.<ext>` in that directory.
+- Only paths in `known` are returned, and never the importing file itself; results are de-duplicated.
 
 **Notes**
-* The `JS_EXT` constant includes `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, and `.cjs`.
+- Heuristic, line based; it does not handle multi-line TS imports whose specifier is on a different line than a `from`-less form, or aliased path mappings.

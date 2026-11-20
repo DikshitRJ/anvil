@@ -1,26 +1,23 @@
 # `webview/state.ts`
 
 **Purpose**
-This file manages the state of the webview panel. It processes messages from the host to update the panel data without accessing the DOM.
+Pure reducer that folds host-to-webview messages into `PanelState`. No DOM access.
 
 **Exports**
-* ContextCard: interface - Defines the structure for context items, budget, and usage.
-* ThreadInfo: interface - Defines the structure for thread identification, title, and status.
-* Entry: type - Defines the structure for different types of message entries including text, tools, approvals, notices, and model switches.
-* Finished: interface - Defines the structure for run completion status, metrics, and errors.
-* Run: interface - Defines the structure for a single execution run including entries and threads.
-* GlobalNotice: interface - Defines the structure for global system notices.
-* PanelState: interface - Defines the complete state object for the webview panel.
-* initialState(): PanelState - function - Returns the default state object for the panel.
-* reduce(state: PanelState, msg: HostToWebview): PanelState - function - Takes the current state and a message to return a new state.
+- Types: `ContextCard`, `ThreadInfo`, `Entry` (`text | tool | approval | notice | modelSwitch`), `Finished`, `Run`, `GlobalNotice`, `PanelState`.
+- `initialState()`, `reduce(state, msg)`.
 
 **Collaborators**
-* Imports: `../src/panel/protocol`
-* Exports: Not visible from this file.
+- Imports: `../src/panel/protocol` (types).
+- Used by: `main.ts`, `render.ts` (types).
 
 **Key behaviour and invariants**
-* The reducer is a pure function and does not modify the existing state object.
-* The `upsert` function replaces an entry if the key exists or appends it if the key is new.
-* `noticeSeq` increments every time a notice is processed.
-* `running` becomes true when a run starts and false when a run finishes.
-* `updateRun` creates a new run object if the provided `runId` does not exist in the current state.
+- Never mutates the input state; returns new objects.
+- Run-scoped messages (`runStarted`, `context`, `text`, `tool`, `thread`, `approval`, `approvalResolved`, `modelSwitch`, `notice` with a run id, `runFinished`) go through `updateRun`, which creates the run if it does not exist yet (so late or reordered messages are still shown).
+- Entries are keyed (`m:<messageId>`, `t:<callId>`, `a:<id>`) and upserted: a repeated `text` or `tool` message replaces the earlier one (text messages carry full content), keeping position.
+- `running` becomes true on `runStarted` and false on `runFinished`. `approvalResolved` marks the matching approval entry with its outcome.
+- A `notice` with no `runId` becomes a global notice; otherwise it is appended to the run. `noticeSeq` increments for every notice and model switch to make unique keys. A `modelSwitch` also sets `activeModel` to the new model.
+- `init` sets models, active model and URL; `health`, `changes` and `mentionResults` replace their slices wholesale.
+
+**Notes**
+- The state (minus `running` and mentions) is persisted by `main.ts`, so it must stay JSON-serialisable.

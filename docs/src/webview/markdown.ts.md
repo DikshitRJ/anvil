@@ -1,25 +1,22 @@
 # `webview/markdown.ts`
 
 **Purpose**
-This file converts Markdown text into HTML strings. It provides a safe renderer that prevents HTML injection and restricts link behavior.
+Tiny safe markdown renderer for assistant text.
 
 **Exports**
-* escapeHtml(s: string): string - function: Converts special characters like < and > into HTML entities.
-* renderMarkdown(src: string): string - function: Processes a Markdown string and returns an HTML string.
+- `escapeHtml(s)`: escapes `& < > " '`.
+- `renderMarkdown(src)`: returns an HTML string.
 
 **Collaborators**
-Imports: Not visible from this file.
-Exports: Not visible from this file.
+- Imports: none.
+- Used by: `render.ts`.
 
 **Key behaviour and invariants**
-* The renderer escapes all HTML characters before processing Markdown.
-* Links become plain text and do not create `<a>` tags.
-* The renderer does not emit `<img>` tags or event attributes.
-* The renderer does not support `javascript:` URLs.
-* Code blocks use a `lang-` class for styling.
-* Headings use levels 4 through 6.
-* The renderer ignores empty lines.
-* Unterminated code fences end the block at the end of the input.
+- All HTML in the source is escaped first, then a small subset is applied: fenced code blocks (with a `lang-<name>` class on `<code>`), headings, bullet and numbered lists, block quotes, paragraphs (single newlines become `<br>`), inline code, bold and italic.
+- Markdown headings `#`, `##`, `###` render as `<h4>`, `<h5>`, `<h6>` so they stay small in the panel; deeper levels are plain text.
+- Links never become `<a>`: `[text](url)` is shown as `text (url)` text. Images, raw HTML, event attributes and `javascript:` URLs cannot be produced.
+- An unterminated fence (text still streaming) simply ends at the end of the input. Blank lines are skipped.
+- Inline code is protected with private-use placeholders (U+E000) while bold/italic are applied, so markup inside backticks stays literal; any U+E000 in the input is stripped first.
 
 **Notes**
-The renderer uses a placeholder system to handle code blocks within inline text.
+- Because it is re-run on every streamed snapshot, it is stateless and fast.

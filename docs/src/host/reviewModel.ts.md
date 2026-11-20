@@ -1,31 +1,25 @@
 # `src/host/reviewModel.ts`
 
 **Purpose**
-This file manages the state of a code review session. It tracks hunk-level decisions, calculates review outcomes, and maps hunks to preview lines.
+vscode-free state of one review: per-hunk decisions, the resulting content and feedback text, and the mapping between hunks and preview lines.
 
 **Exports**
-* ReviewOutcome: interface defines the structure of the final review result.
-* HunkAnchor: interface defines the mapping between a hunk and its position in the preview text.
-* ReviewModel: class manages the collection of hunks, user decisions, and provides methods to generate previews and outcomes.
-* relativeInside(root: string, file: string): function returns a POSIX path if the file is inside the root directory.
+- `ReviewOutcome`: `content` (string or null), `accepted`, `total`, `feedback`.
+- `HunkAnchor`: `hunkId`, `line` (0-based first line in the preview), `span` (preview lines occupied).
+- `ReviewModel(original, proposed)`: `hunks`, `total`, `decisionOf`, `decidedCount`, `acceptedCount`, `allDecided`, `decide`, `decideAll`, `preview`, `outcome`, `feedback`, `anchors`, `hunkAtLine`.
+- `relativeInside(root, file)`.
 
 **Collaborators**
-* Imports:
-    * `../core/diff/hunks`: provides `applyHunks`, `computeHunks`, `previewContent`, and `summarizeHunk` for diff processing.
-    * `../core/diff/hunks`: provides types `Hunk` and `HunkDecision`.
-* Exports used by: Not visible from this file.
+- Imports: `../core/diff/hunks` (`applyHunks`, `computeHunks`, `previewContent`, `summarizeHunk`, types).
+- Used by: `reviewController.ts`, `inlineEdit.ts` (`relativeInside`).
 
 **Key behaviour and invariants**
-* `MAX_FEEDBACK_LINES` is set to 40.
-* `capLines` truncates feedback text to 40 lines and appends a count of omitted lines.
-* `ReviewModel` initializes `decisions` by setting all hunk IDs to `pending`.
-* `decide` returns `false` if the hunk ID does not exist in the `decisions` map.
-* `outcome` returns `null` content if `total` is 0 and `proposed` equals `original`.
-* `outcome` returns `null` content if `accepted` count is 0 and `total` is greater than 0.
-* `anchors` calculates line offsets by adjusting for the `span` of rejected hunks (reverting to `origLines.length`).
-* `hunkAtLine` identifies the hunk ID with the minimum distance to a given line number.
+- All hunks start `pending`. `decide` returns `false` for an unknown hunk id; `decideAll` sets every hunk.
+- `outcome().content`: with zero hunks, `null` if the texts are identical, otherwise the proposed text as is (covers changes a line diff cannot show, such as creating an empty file); with hunks, `null` if none accepted, else `applyHunks` over the accepted set.
+- `feedback`: "No visible changes." for zero hunks; "Accepted all N hunk(s)."; otherwise a header ("The user rejected all N hunk(s):" or "Accepted A of N hunks. The user rejected:") followed by a unified-diff summary of each rejected hunk (each side clipped to 8 lines). The whole text is capped at 40 lines with a "... (N more lines)" marker.
+- `anchors` position each hunk in `preview()`: a rejected hunk occupies its original line count, others their new line count; offsets accumulate, so a deletion or rejected insertion has span 0.
+- `hunkAtLine` returns the hunk containing the line, else the nearest one by line distance.
+- `relativeInside` normalises backslashes and trailing slashes and returns the POSIX relative path, or `undefined` when the file is not strictly inside the root (including the root itself).
 
 **Notes**
-* `relativeInside` normalizes paths by replacing backslashes with forward slashes and removing trailing slashes.
-* `relativeInside` returns `undefined` if the file is not strictly inside the root or if the file path equals the root path.
-* `feedback` uses a summary of 8 characters per rejected hunk.
+- The feedback text is what the agent reads after a partial or total rejection.

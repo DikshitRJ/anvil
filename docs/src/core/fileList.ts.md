@@ -1,22 +1,20 @@
 # `src/core/fileList.ts`
 
 **Purpose**
-This file provides logic for filtering a list of files based on a directory prefix and a glob pattern. It ensures that results are restricted to a specific workspace-relative path and a maximum count.
+Pure filter behind the `list_files` tool: directory prefix plus glob.
 
 **Exports**
-* filterFiles(files, dir, glob, limit): function: Filters an array of file paths based on a prefix, a glob pattern, and a maximum limit.
+- `filterFiles(files, dir = '', glob?, limit = 200)`: returns the matching workspace-relative paths.
 
 **Collaborators**
-* Imports: picomatch (used to match file paths against a glob pattern)
-* Exports used by: Not visible from this file.
+- Imports: `picomatch`.
+- Used by: `mcp/tools.ts`.
 
 **Key behaviour and invariants**
-* The `dir` prefix is normalized by replacing backslashes with forward slashes, removing leading `./`, and ensuring a trailing slash.
-* If `dir` is empty or `.`, the prefix is an empty string.
-* The `picomatch` configuration sets `dot: true` and `matchBase` to true if the glob does not include a `/`.
-* The function returns a maximum of `limit` (defaulting to 200) results.
-* The filter checks if each file path starts with the processed `prefix` and matches the `match` function.
+- `dir` is normalised (backslashes to `/`, leading `./` removed, trailing `/` ensured); empty or `.` means no prefix.
+- The glob is matched against the full workspace-relative path, with `dot: true`; `matchBase` is on only when the glob contains no `/`.
+- No glob means every file under the prefix matches.
+- Input order is preserved and results are cut to `limit`.
 
 **Notes**
-* If `glob` is not provided, the `match` function defaults to returning `true` for all files.
-* The function performs a slice on the final array to enforce the `limit`.
+- Does no I/O and no path-escape checks; the caller supplies the file list.

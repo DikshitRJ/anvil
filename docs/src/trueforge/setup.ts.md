@@ -1,28 +1,21 @@
 # `src/trueforge/setup.ts`
 
 **Purpose**
-This file performs an idempotent first-run setup for the TrueForge environment. It registers the Anvil MCP server and creates or updates agent definitions.
+Idempotent first-run setup: registers the Anvil MCP server and the agent definitions in TrueForge.
 
 **Exports**
-* MCP_SERVER_NAME (const): Defines the default name 'anvil-editor' for the MCP server.
-* SetupReport (interface): Defines the structure for the setup results including server status, agent statuses, and error messages.
-* ensureSetup (function): Executes the registration of the MCP server and the iteration of agent definitions.
+- `MCP_SERVER_NAME` (`'anvil-editor'`).
+- `SetupReport`: `mcpServer` (`created | updated | failed`), `agents` (name to `ok | failed`), `errors`.
+- `ensureSetup(client, {mcpUrl, token, agents, models, serverName?})`.
 
 **Collaborators**
-* Imports:
-    * `@truefoundry/trueforge-sdk`: Provides the `TrueForge` type for the client.
-    * `./spec`: Provides `buildSpec` for manifest generation and `AgentDefinition` for type definitions.
-* Exports used by: Not visible from this file.
+- Imports: TrueForge SDK type, `./spec` (`buildSpec`, `AgentDefinition`).
+- Used by: `extension.ts` (`anvil.setup`, health loop), `host/doctor.ts` (`MCP_SERVER_NAME`).
 
 **Key behaviour and invariants**
-* The `serverName` defaults to `MCP_SERVER_NAME` if not provided in options.
-* The `mcpServers.get` call catches errors to determine if the server already exists.
-* The `mcpServers.createOrUpdate` call uses a hardcoded description: 'Anvil VS Code editor tools: read, search, review-gated edits and commands'.
-* The `upsertAgent` function updates an existing agent if the name matches and creates a new one otherwise.
-* The `model` used for all agents is derived from the first element of the `opts.models` array.
-* If `opts.models` is empty, agent registration fails with a specific error message.
+- MCP server: checks whether `anvil-editor` exists, then `createOrUpdate` with a `remote` manifest pointing at the bridge URL and an `Authorization: Bearer <token>` header (so the bridge's token check passes). Reported as `updated` if it existed, else `created`; failure sets `failed` and records the error.
+- Agents: each definition is built with the first model in `models` (`models[0]`) and upserted by name: an existing agent with exactly that name is updated (description and manifest), otherwise created. With no models configured every agent fails with "Set anvil.models to register agents".
+- Never throws: each step's error is caught into `errors`; one failure does not stop the others.
 
 **Notes**
-* `errText` converts unknown errors to strings, preferring the `message` property of an `Error` instance.
-* The `mcpServer` status in `SetupReport` can be 'created', 'updated', or 'failed'.
-* The `agents` status in `SetupReport` can be 'ok' or 'failed'.
+- Only the first configured model is written into the agent manifests; later models are applied per session by `AnvilSession` when falling back.

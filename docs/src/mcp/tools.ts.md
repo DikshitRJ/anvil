@@ -1,37 +1,22 @@
 # `src/mcp/tools.ts`
 
 **Purpose**
-This file defines and registers the ten Anvil editor tools exposed over the Model Context Protocol (MCP). It handles tool registration, input validation, path normalization, and gated execution for read, search, write, and command operations.
+Defines and registers the ten Anvil editor tools exposed over MCP: `read_file`, `list_files`, `get_diagnostics`, `search_code`, `grep`, `find_symbol`, `repo_map`, `edit_file`, `write_file`, `run_command`.
 
 **Exports**
-* registerTools(server: McpServer, host: WorkspaceHost, gate: WriteGate): void (function): Registers all available tools to the MCP server.
+- `registerTools(server, host, gate)`.
 
 **Collaborators**
-* Imports:
-    * `@modelcontextprotocol/sdk/server/mcp.js`: Provides the `McpServer` type.
-    * `zod`: Used for input schema validation.
-    * `../core/edits/applyEdit`: Provides `EditError` and `simulateEdit` for write operations.
-    * `../core/paths`: Provides `resolveInWorkspace` and `toRelative` for path handling.
-    * `./server`: Provides `WorkspaceHost` and `WriteGate` types.
-* Exports used by: Not visible from this file.
+- Imports: MCP SDK `McpServer` (type), `zod`, `../core/edits/applyEdit`, `../core/paths`, `./server` types.
+- Used by: `mcp/server.ts`.
 
 **Key behaviour and invariants**
-* All paths are validated against the workspace root.
-* Errors are returned as `isError` results instead of being thrown.
-* `READ_CAP` is set to 24 * 1024 bytes for text output.
-* `DEFAULT_WINDOW` is set to 400 lines for file reading.
-* `CMD_CAP` is set to 16 * 1024 bytes for command output.
-* `repo_map` has a `max_tokens` limit between 100 and 6000.
-* `search_code` has a `limit` between 1 and 20.
-* `list_files` has a `limit` between 1 and 1000.
-* `grep` has a `limit` between 1 and 200.
-* `run_command` has a `timeout_sec` capped at 600 seconds.
-* `gatedWrite` requires an active Anvil run and a successful user approval via the `WriteGate`.
-* `gatedWrite` ensures the file content has not changed between the proposal and the application.
-* `capCommandOutput` truncates output to 4096 bytes for the prefix and 12 * 1024 bytes for the suffix.
+- Every path goes through `resolveInWorkspace`; every handler is wrapped by `guarded`, so errors come back as `isError` text results, never thrown.
+- Read tools (marked read-only): `read_file` returns numbered lines (default window 400 lines, optional 1-based `start_line`/`end_line`, output capped at 24 KB, with a hint to continue); a missing file suggests `list_files`/`search_code`. `list_files` default limit 200 (max 1000) uses the index. `get_diagnostics` shows at most the first 100. `search_code` (limit 1-20, default 8) prints chunks clipped to 12 lines with score and matched terms. `grep` (limit 1-200, default 50, optional `ignore_case`) prints `path:line: text`. `find_symbol` lists definitions. `repo_map` takes `max_tokens` 100-6000 (default 1500), optionally focused on a path.
+- Write tools go through `gatedWrite`: refuse with "No active Anvil run" if no run is active; simulate the edit (an `EditError` becomes `CODE: message`); ask `gate.resolveWrite` for the final content. A rejection returns the user's feedback as a normal (non-error) result starting "The user rejected this edit." Before applying it re-reads the file and, if it changed during review, returns "The file changed while the review was open; re-read it and propose the edit again." without writing. Otherwise `host.applyWrite` (which records a checkpoint) and the result includes the user's feedback (e.g. which hunks were rejected).
+- The `args` object is passed to the gate exactly as received, with no defaults injected (no zod `.default()`), because the approval ledger key is a hash of those args and must equal what TrueForge showed in its approval event.
+- `run_command`: refused without an active run; the `cwd` is validated; `gate.authorizeCommand` must approve (else "The user did not approve this command."); the timeout is `timeout_sec` (default 120) capped at 600 s; output is `$ command`, the exit code (and "timed out"), then output; outputs over 16 KB keep the first 4 KB and last 12 KB.
 
 **Notes**
-* `gatedWrite` does not inject defaults into arguments to ensure the approval ledger hash remains valid.
-* `numberedWindow` handles trailing empty lines by removing the last line if it is empty.
-* `get_diagnostics` limits the output to the first 100 diagnostics.
-* `formatHit` limits the displayed text chunk to the first 12 lines.
+- `edit_file` and `write_file` are annotated non-destructive (the user reviews them); `run_command` is annotated destructive.
+- The `anvil.commandTimeoutSec` setting is not read here; the default in this file is 120 s.

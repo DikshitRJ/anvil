@@ -1,28 +1,20 @@
 # `src/host/fileStore.ts`
 
 **Purpose**
-This file implements the `FileStore` interface for the VS Code workspace. It manages file operations such as reading, writing, and deleting files using `WorkspaceEdit` to ensure native undo support and dirty-buffer awareness.
+`FileStore` implementation over the VS Code workspace. Writes go through `WorkspaceEdit` so VS Code's native undo works and unsaved buffers are respected.
 
 **Exports**
-* VsCodeFileStore (class): Implements the `FileStore` interface to manage workspace files.
+- `VsCodeFileStore(root)`: `read(rel)`, `write(rel, content)`, `remove(rel)`.
 
 **Collaborators**
-* Imports: 
-    * `node:path`: Used for retrieving the directory name of a file path.
-    * `vscode`: Used for workspace filesystem access, text document management, and applying workspace edits.
-    * `../core/paths`: Provides `resolveInWorkspace` to map relative paths to absolute paths.
-    * `../core/transaction`: Provides the `FileStore` type definition.
-* Exports used by: Not visible from this file.
+- Imports: `node:path`, `vscode`, `../core/paths` (`resolveInWorkspace`), `../core/transaction` (`FileStore` type).
+- Used by: `runController.ts` (writes and the checkpoint store). Note it does not do the symlink check (`realPath.ts`); reads by agent tools do.
 
 **Key behaviour and invariants**
-* The `uri` method converts a relative path into a `vscode.Uri` using `resolveInWorkspace` and the instance `root`.
-* The `read` method returns the text of an open document if it exists in `vscode.workspace.textDocuments`, otherwise it reads from the filesystem.
-* The `write` method creates a directory if the file does not exist before creating the file via `WorkspaceEdit`.
-* The `write` method uses `WorkspaceEdit.replace` if the file exists and the content differs from the current content.
-* The `write` method calls `doc.save()` if the document is found in the open documents list and `isDirty` is true.
-* The `remove` method uses `WorkspaceEdit.deleteFile` with `ignoreIfNotExists: true`.
+- All paths go through `resolveInWorkspace`, so an escaping path throws `PathError`.
+- `read` returns the text of an open editor (including unsaved edits) when the file is open, otherwise the file from disk, or `null` if it cannot be read.
+- `write`: a missing file (`read` is `null`) gets its directory created and is created via `WorkspaceEdit.createFile` (`ignoreIfExists`). An existing file whose content differs is replaced over its full range via `WorkspaceEdit.replace`; identical content is a no-op. Afterwards, if the document is open and dirty, it is saved.
+- `remove` deletes via `WorkspaceEdit.deleteFile` with `ignoreIfNotExists`.
 
 **Notes**
-* The `read` method returns `null` if the file cannot be read from the filesystem.
-* `WorkspaceEdit` is used for both creation and replacement to maintain native undo history.
-* `createFile` uses `ignoreIfExists: true`.
+- `read` reflects the editor buffer, which is what `CheckpointStore` compares against when detecting user edits (conflicts).

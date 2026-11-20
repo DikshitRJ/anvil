@@ -1,29 +1,26 @@
 # `src/core/transaction.ts`
 
 **Purpose**
-This file manages a checkpoint store to record applied edits for undo and revert operations. It tracks changes, maintains base states for runs, and handles restoration of file content.
+Checkpoint store that records every applied edit so a single change or a whole run can be undone safely.
 
 **Exports**
-* FileStore (interface): Defines methods for reading, writing, and removing file content.
-* AppliedChange (interface): Represents a single recorded change with sequence, run ID, path, and content states.
-* RestoreReport (interface): Contains lists of restored paths and paths with conflicts.
-* CheckpointStore (class): Manages the collection of changes, base states, and provides undo/revert logic.
+- `FileStore` (interface): `read(rel)` (string or null), `write`, `remove`.
+- `AppliedChange`: `seq`, `runId`, `path`, `before` (null if file was created), `after`, `at`, `summary`.
+- `RestoreReport`: `restored` and `conflicts` path lists.
+- `CheckpointStore`: `record`, `list`, `forRun`, `undo`, `revertRun`, `onChange`.
 
 **Collaborators**
-* Imports: Not visible from this file.
-* Exports used by: Not visible from this file.
+- Imports: none (works through a `FileStore`).
+- Used by: run controller (revert on cancel/failure), review controller (undo of single changes), MCP tools (record).
 
 **Key behaviour and invariants**
-* `CheckpointStore` limits `entries` to a maximum of `maxEntries` (default 200) by shifting the oldest entries.
-* `CheckpointStore` limits `bases` to a maximum of `maxBaseRuns` (default 50) by deleting the oldest run.
-* `record` assigns a monotonically increasing `nextSeq` starting at 1 and captures the current timestamp as `at`.
-* `record` stores the first `before` value per path per run in the `bases` map to ensure true base restoration.
-* `undo` only restores a path if the current content matches the `after` state or if `force` is true.
-* `revertRun` processes changes in reverse order and identifies the target state based on the `bases` map or the earliest `before` value.
-* `onChange` registers a listener and returns a function to remove that listener.
+- `record` assigns `seq` from 1 upward, stamps `at`, updates the per-run base map, then notifies listeners.
+- The undo list is capped at `maxEntries` (200, oldest evicted). Base map is capped at `maxBaseRuns` (50 runs, oldest dropped).
+- `bases` keeps the first `before` per path per run plus the latest `after`; it survives list eviction, so `revertRun` still restores the true original.
+- `undo(seq)`: restores `before` only if the file still equals `after`; otherwise the path is reported as a conflict and left untouched (entry kept). `force` overrides. Unknown `seq` returns an empty report.
+- `revertRun(runId)`: per path, compares current content with the latest recorded `after`; a mismatch is a conflict and that path is skipped. Otherwise it restores the base `before` (removes the file if it was null), drops that path's entries and base.
+- `restore` deletes the file when `before` is null.
+- `onChange` returns an unsubscribe function.
 
 **Notes**
-* `undo` returns an empty `RestoreReport` if the sequence number is not found.
-* `restore` performs a `store.remove` if the `before` value is `null`.
-* `emit` executes all registered listeners in the `listeners` set.
-* `drop` removes specific entries from the `entries` array based on a set of sequence numbers.
+- Conflicts mean the user edited the file after Anvil; nothing is overwritten unless `force` is set.

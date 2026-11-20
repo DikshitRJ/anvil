@@ -1,28 +1,25 @@
 # `src/core/ledger.ts`
 
 **Purpose**
-This file manages an approval ledger that tracks review outcomes. It provides mechanisms to generate stable keys and store entries with a time-to-live (TTL) expiration.
+Approval ledger. Remembers the outcome of a diff review so the follow-up tool call can consume it exactly once.
 
 **Exports**
-* stableStringify(value: unknown): function: Converts a value into a deterministic string representation.
-* canonicalKey(tool: string, args: unknown): function: Generates a sha256 hex hash of a tool and its stable stringified arguments.
-* LedgerEntry: interface: Defines the structure for a ledger entry including content, hunk counts, and feedback.
-* ApprovalLedger: class: Manages a map of ledger entries with expiration logic.
-* scopedKey(runId: string | undefined, tool: string, input: Record<string, unknown>): function: Generates a key scoped by a run ID and a canonical key.
+- `stableStringify(value)`: deterministic JSON-like string.
+- `canonicalKey(tool, args)`: sha256 hex of `${tool}\n${stableStringify(args)}`.
+- `LedgerEntry`: `finalContent` (string or null), `totalHunks`, `feedback`, and optional deprecated, unused `acceptedHunks`.
+- `ApprovalLedger`: `put`, `take`, `clear`, `size`.
+- `scopedKey(runId, tool, input)`: `${runId ?? ''}|${canonicalKey(tool, input)}`.
 
 **Collaborators**
-* Imports: node:crypto (createHash) is used to generate sha256 hashes.
-* Exports used by: Not visible from this file.
+- Imports: `node:crypto`.
+- Used by: `host/approvalFlow.ts` and the MCP tool layer.
 
 **Key behaviour and invariants**
-* stableStringify sorts object keys alphabetically to ensure deterministic output.
-* canonicalKey uses the format `${tool}\n${stableStringify(args)}` for hashing.
-* ApprovalLedger uses a TTL_MS of 10 * 60 * 1000 (10 minutes).
-* put() removes all entries from the map that are older than TTL_MS before adding a new entry.
-* take() removes the entry from the map regardless of its age, but returns undefined if the entry is older than TTL_MS.
-* scopedKey prepends the runId (or an empty string) to the canonical key using a pipe separator.
+- `stableStringify` sorts object keys, drops `undefined` properties, and maps `null` and `undefined` to `null`.
+- Entries expire after 10 minutes (`TTL_MS`).
+- `put` first deletes every expired entry, then stores the new one (overwrites the same key).
+- `take` is single-use: it always deletes the entry, and returns `undefined` if the entry is missing or expired.
+- Keys are scoped by run id, so a stale approval can never satisfy an identical call in a later run.
 
 **Notes**
-* LedgerEntry.acceptedHunks is marked as deprecated and unused.
-* stableStringify returns 'null' for null or undefined values.
-* stableStringify filters out keys where the value is undefined.
+- `clear()` empties the ledger; `size()` counts stored entries, including not-yet-pruned expired ones.

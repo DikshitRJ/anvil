@@ -1,28 +1,21 @@
 # `src/core/context/chunker.ts`
 
 **Purpose**
-This file splits source code files into smaller chunks for retrieval. It aligns these chunks with symbol boundaries like classes and methods.
+Splits a file into retrieval chunks aligned with symbol boundaries.
 
 **Exports**
-* Chunk(path, startLine, endLine, text, symbol): type - This type represents a segment of a file.
+- `chunkFile(path, content, symbols)`: returns `Chunk[]` (`id` = `path#start-end`, `path`, `startLine`, `endLine`, `text`, optional `symbol`).
+- Re-exports the `Chunk` type.
 
 **Collaborators**
-* Imports: ./types
-* Exports: Not visible from this file.
+- Imports: `./types` (`Chunk`, `SymbolInfo`).
+- Used by: `codeIndex.ts`.
 
 **Key behaviour and invariants**
-* The function `chunkFile` returns an empty array if the file content is empty.
-* The function `chunkFile` removes the last line if it is empty.
-* The `MAX_CHUNK` limit is 150 lines.
-* The `WINDOW` size is 120 lines.
-* The `PLAIN_WINDOW` size is 60 lines.
-* The `PLAIN_OVERLAP` is 10 lines.
-* The `MIN_GAP_LINES` is 3 lines.
-* The `BIG_CLASS` threshold is 120 lines.
-* The `chunkFile` function uses a sliding window if no symbols exist.
-* The `chunkFile` function uses symbol-based logic if symbols exist.
-* The `bigClass` logic applies only to classes larger than 120 lines with methods.
+- A trailing empty line is dropped. With no symbols the file is cut into 60-line windows overlapping by 10 lines; all-blank windows are skipped.
+- With symbols: headings are flattened (each ends before the next symbol), then non-nested top-level symbols become chunks named with their qualified name (`container.name`). A range of at most 150 lines is one chunk, longer ranges are cut into 120-line windows. Blank-only ranges give no chunk.
+- Code between symbols (and before the first / after the last) becomes an unnamed chunk only if it has at least 3 non-blank lines.
+- A class longer than 120 lines with methods is split: a header gap chunk, one chunk per method, and a trailing gap chunk.
 
 **Notes**
-* The `flatten` function sets the `endLine` of a heading to the line before the next symbol.
-* The `topLevel` function identifies symbols that do not overlap with previous symbols.
+- Line numbers are 1-based and inclusive.

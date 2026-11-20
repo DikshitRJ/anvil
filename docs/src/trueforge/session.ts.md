@@ -1,40 +1,27 @@
 # `src/trueforge/session.ts`
 
 **Purpose**
-This file manages the execution of a single user request as a TrueForge turn. It handles event streaming, manages pauses for user approvals or questions, supports cancellation, and coordinates model retries or switches via a Model Relay.
+Runs one user request as a TrueForge turn: streams events, answers approval and question pauses, supports cancellation, and drives the Model Relay (retry or switch model) on failures.
 
 **Exports**
-* ApprovalRequest (interface): Represents a request for user approval on a tool call.
-* ApprovalDecision (type): Represents the result of an approval request, either allowing or denying with a reason.
-* RunHooks (interface): Defines optional hooks for event handling, approvals, questions, model switches, retries, and pre-retry actions.
-* RunResult (interface): Represents the final outcome of a run, including status, output, model, and metrics.
-* AnvilSession (class): The primary class for executing a turn, managing the lifecycle of a session, and handling fallbacks.
+- `ApprovalRequest` (`{call}`), `ApprovalDecision` (`{allow:true}` or `{allow:false, reason}`).
+- `RunHooks`: `onEvent`, `onApproval` (required), `onQuestion`, `onModelSwitch`, `onRetry`, `beforeRetry` (host rolls back the failed attempt's writes).
+- `RunResult`: `status` (`done | cancelled | error`), `output`, `model`, `error`, `sessionId`, `metrics`.
+- `AnvilSession(opts)`: `sessionId`, `run(input, hooks)`, `cancel()`, `dispose()`. Options: `client`, `agent`, `relay`, `stallTimeoutMs`, `title`, `baseUrl`, `isBusy`.
 
 **Collaborators**
-* Imports:
-    * `@truefoundry/trueforge-sdk`: Provides `TrueForge` and `TrueForgeApi` types for client interaction.
-    * `../core/agent/toolCalls`: Provides `ResolvedToolCall` type.
-    * `../core/agent/events`: Provides `TurnReducer` and `TurnView` for state management.
-    * `../core/agent/fallback`: Provides `classifyFailure`, `FailureKind`, and `ModelRelay` for error handling.
-    * `./spec`: Provides `buildSpec` and `AgentDefinition` for session configuration.
-* Exports used by: Not visible from this file.
+- Imports: TrueForge SDK types, `core/agent/toolCalls`, `core/agent/events` (`TurnReducer`), `core/agent/fallback` (`classifyFailure`, `ModelRelay`), `./spec` (`buildSpec`).
+- Used by: `host/runController.ts`, `host/inlineEdit.ts`.
 
 **Key behaviour and invariants**
-* A run is blocked if `running` is true.
-* `MAX_RESUBSCRIBES` is set to 3 for handling transient stream drops.
-* `timeoutInSeconds` is set to 600 for request options.
-* `RETRY_NOTE` prepends a specific string to the input on retry attempts.
-* `DEFAULT_ANSWER` defaults to 'Proceed with your best judgement.' if no question hook is provided.
-* `DISMISSED_ANSWER` is used when the question hook returns an empty string.
-* `unlessCancelled` ensures that stuck host hooks do not block session settlement during cancellation.
-* `syncModel` ensures the session spec matches the relay's current model.
-* `backoff` uses a race between a timeout and the `cancelSignal`.
-* `ensureSession` creates a new session and truncates the title to 50 characters.
-* `nextEvent` re-arms the stall watchdog if `isBusy` returns true.
+- One run at a time per session ("A run is already in progress"). The server-side session is created lazily on the first attempt (title cut to 50 chars) and reused across runs, so chat context persists; before a run the session is moved back to the relay's current model if an earlier fallback changed it.
+- `run` resets the relay, then loops: attempt, and on failure ask the relay. `retry`: `onRetry`, then backoff (which first calls `beforeRetry`, then sleeps, abortable by cancel). `switch`: `beforeRetry`, update the session spec to the new model (if that fails it counts as another failure), then `onModelSwitch`. `give-up`: `cancelled` gives status `cancelled`; otherwise `error` (for `harness-down` the message names the TrueForge URL).
+- A retried or switched attempt sends the original input prefixed with a note that the previous attempt failed, its changes were reverted, and files must be re-read.
+- One attempt creates a turn stream and drains events into `TurnReducer`, calling `onEvent` per event with the current view. Failures before any event are phase `connect`, after the first event phase `turn`. `turn.done` ends the attempt; a `paused` update triggers `answerPause`.
+- If the stream ends without `turn.done`, it re-subscribes after the last event id, at most 3 consecutive times (counter resets whenever events arrive or after a pause); with no turn id or too many drops it fails with "stream ended unexpectedly".
+- Stall watchdog: if no event arrives within `stallTimeoutMs` the attempt fails as `stall` (transient: aborted and cancelled server-side). While `isBusy()` is true (host is reviewing a write or running a command) the timer is re-armed instead, so waiting on the user is never a stall.
+- Pauses: for each pending tool call, `ask_user_question` (a TrueForge system tool) is answered via `onQuestion` (empty answer becomes a "dismissed" text, no hook gives "Proceed with your best judgement."); every other call goes to `onApproval` and becomes `user.tool_approval` allow or deny (a throwing hook means deny "Review failed"; cancel means deny "Cancelled"). The session subscribes first, then posts the answers, so no event is missed. A pause with no pending call is an error.
+- `cancel()` (only while running) sets `cancelled`, aborts the HTTP request, fires the cancel signal (which also unblocks hooks stuck in `unlessCancelled` and backoff) and cancels the turn on the server. A server-side cancelled turn that the user did not request is treated as a failure.
 
 **Notes**
-* `cancel()` triggers an `AbortController` and calls `serverCancel()` to notify the backend.
-* `beforeRetry` is called before backoff and before model swaps.
-* `closeStream` ensures the async iterator is returned properly.
-* `fromError` maps various error properties (message, statusCode, code, cause) into a `Failure` object.
-* `answerPause` throws an error if a turn is paused but no tool calls are pending.
+- Both `retry` and `switch` call `beforeRetry` exactly once per recovery, so the host can revert writes before the next attempt.

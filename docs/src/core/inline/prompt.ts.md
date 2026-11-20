@@ -1,26 +1,21 @@
 # `src/core/inline/prompt.ts`
 
 **Purpose**
-This file builds prompts for inline code edits and parses model responses. It ensures the model provides the correct code replacement with proper indentation.
+Builds the inline-edit prompt and parses the model's reply into replacement code.
 
 **Exports**
-* InlineRequest(path, languageId, before, selection, after, instruction, context): InlineRequest - interface - Defines the structure for an inline edit request.
-* buildInlinePrompt(r: InlineRequest): string - function - Creates a formatted string containing the file context and instructions for the model.
-* extractReplacement(text: string): string - function - Extracts the content of the last closed fenced code block from a model response.
-* extractPartialReplacement(text: string): string - function - Extracts content from a code block that is still open during a stream.
-* matchIndentation(replacement: string, selection: string): string - function - Adjusts the indentation of the replacement text to match the original selection.
+- `InlineRequest`: `path`, `languageId`, `before`, `selection`, `after`, `instruction`, optional `context`.
+- `buildInlinePrompt(request)`, `extractReplacement(text)`, `extractPartialReplacement(text)`, `matchIndentation(replacement, selection)`.
 
 **Collaborators**
-* Imports: Not visible from this file.
-* Exports: Not visible from this file.
+- Imports: none.
+- Used by: `host/inlineEdit.ts`.
 
 **Key behaviour and invariants**
-* `buildInlinePrompt` includes up to 60 lines of preceding code and 30 lines of following code.
-* `extractReplacement` returns the last closed block if multiple blocks exist.
-* `matchIndentation` only adds missing leading whitespace if the replacement indentation is less than the selection indentation.
-* `matchIndentation` preserves the trailing newline of the original selection.
-* `extractPartialReplacement` returns the raw text if no opening fence is detected.
+- The prompt contains the file and language, the instruction, the last 60 lines before the selection, the selection (to rewrite), the first 30 lines after it, optional "Related definitions", and the demand for exactly one fenced block with the replacement for the selection only.
+- `extractReplacement` returns the content of the last closed fenced block (backtick or tilde fences; a closing fence must use the same character and be at least as long). With no closed block it strips a lone opening fence (and trailing fence) from the trimmed text, or returns the trimmed text unchanged.
+- `extractPartialReplacement` is for streaming: it returns the first fenced block's lines so far (open or closed), or the raw text if no fence has started.
+- `matchIndentation` computes the selection's base indent from its first non-blank line; if the replacement's minimum indent is smaller, the missing whitespace is prepended to every non-blank line. Trailing newlines are removed, then one is added back only if the selection ended with a newline. An empty body returns `''`.
 
 **Notes**
-* `buildInlinePrompt` requires the model to return exactly one fenced code block.
-* `matchIndentation` calculates the base indentation from the first non-empty line of the selection.
+- Replacement indentation is never reduced, only added.

@@ -1,26 +1,23 @@
 # `src/core/config.ts`
 
 **Purpose**
-This file defines the configuration structure and default values for the application. It provides a function to merge user settings with default values.
+Defines the Anvil settings shape, its defaults, and a merge function that validates user settings.
 
 **Exports**
-- AnvilConfig(interface): None.
-- DEFAULT_CONFIG(constant): Returns the default configuration object.
-- mergeConfig(partial): Returns a new AnvilConfig object. It combines user input with default values and clamps numeric values to specific ranges.
+- `AnvilConfig` (interface): `trueforgeUrl`, `models` (string[]), `retriesPerModel`, `stallTimeoutSec`, `contextBudget`, `mcpPort`, `cancelBehavior` (`'revert' | 'keep'`), `commandTimeoutSec`.
+- `DEFAULT_CONFIG`: `http://localhost:8790`, no models, 1 retry per model, 45 s stall timeout, 12000 context budget, MCP port 7801, cancel behaviour `revert`, 120 s command timeout.
+- `mergeConfig(partial)`: overlays a `Partial<AnvilConfig>` on the defaults and returns a new object.
 
 **Collaborators**
-- Imports: None.
-- Users: Other modules in the project.
+- Imports: none.
+- Used by: the host config reader, run controller, fallback logic, MCP server.
 
 **Key behaviour and invariants**
-- The `mergeConfig` function returns a new object. It does not modify the `DEFAULT_CONFIG` object.
-- The `clamp` function ensures numeric values stay within defined minimum and maximum limits.
-- `retriesPerModel` must be between 0 and 5.
-- `stallTimeoutSec` must be between 5 and 600.
-- `contextBudget` must be between 1000 and 200000.
-- `mcpPort` must be between 1024 and 65535.
-- `commandTimeoutSec` must be between 5 and 1800.
-- The function rounds all numeric inputs to the nearest integer.
+- Numeric fields are rounded and clamped by the private `clamp`: `retriesPerModel` 0-5, `stallTimeoutSec` 5-600, `contextBudget` 1000-200000, `mcpPort` 1024-65535, `commandTimeoutSec` 5-1800.
+- `undefined` or non-finite numbers fall back to the default (they are not clamped).
+- `trueforgeUrl` and `cancelBehavior` are taken as given with `??`; they are not validated here.
+- `models` is copied, so callers never share the array with `DEFAULT_CONFIG`.
+- `DEFAULT_CONFIG` is never mutated.
 
 **Notes**
-- If a user provides an undefined or non-finite number, the function uses the default value.
+- Cancel behaviour `revert` rolls back the run's edits on cancel; `keep` leaves them (applied in the run controller).

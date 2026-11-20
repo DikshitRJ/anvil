@@ -1,25 +1,21 @@
 # `src/core/context/walker.ts`
 
 **Purpose**
-This file traverses a directory tree to find files for a workspace. It filters files based on size, name, and ignore rules.
+Async workspace walk that lists indexable files, honouring default ignores and nested `.gitignore` files.
 
 **Exports**
-* walkWorkspace(root: string, opts?: { maxFileBytes?: number; extraIgnores?: string[] }): Promise<string[]> - function: It starts the recursive directory walk and returns a sorted list of relative file paths.
+- `walkWorkspace(root, opts?)`: `Promise<string[]>` of sorted workspace-relative POSIX paths; `opts.maxFileBytes` (default 512 KB) and `opts.extraIgnores` (gitignore-style patterns).
 
 **Collaborators**
-* Imports: `node:fs`, `node:path`, `ignore`.
-* Exports: Not visible from this file.
+- Imports: `node:fs`, `node:path`, `ignore`.
+- Used by: `codeIndex.ts`.
 
 **Key behaviour and invariants**
-* The walker limits the total number of files to 20,000.
-* The walker ignores specific directories like `.git`, `node_modules`, and `dist`.
-* The walker ignores lock files and specific binary file extensions.
-* The walker ignores files larger than the specified maximum size (default is 512 KB).
-* The walker loads and applies `.gitignore` files from nested directories.
-* The walker sorts directory entries alphabetically during traversal.
-* The walker returns a sorted list of relative paths.
+- Stops after 20,000 files.
+- Skips directories such as `.git node_modules dist build out .venv venv __pycache__ coverage .next target vendor .idea .claude` and `*.egg-info`.
+- Skips lock files (npm, yarn, pnpm, poetry, Cargo, uv), `*.min.js`, `*.map`, and binary extensions (images including svg, archives, fonts, media, compiled artifacts, databases).
+- Each directory's `.gitignore` is loaded when the walk enters it; a path is ignored if any `.gitignore` on the way (matched relative to its own directory) or `extraIgnores` matches. Unreadable directories and missing `.gitignore` files are skipped silently.
+- Files over the size limit are dropped. Only regular files and directories are visited (no symlinks).
 
 **Notes**
-* The walker skips files if they match the `extraIgnores` list.
-* The walker ignores files with `.min.js` or `.map` extensions.
-* The walker handles missing `.gitignore` files by skipping the load step.
+- Binary detection by NUL byte is done later in `CodeIndex.build`, not here.

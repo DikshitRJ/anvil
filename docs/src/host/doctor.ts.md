@@ -1,36 +1,25 @@
 # `src/host/doctor.ts`
 
 **Purpose**
-This file performs a series of diagnostic checks on the TrueForge environment, MCP bridge, registrations, models, and index. It generates a report to identify configuration issues or connectivity problems. The file is designed to never throw errors during the check process.
+Diagnostics behind the `anvil.doctor` command: checks TrueForge, the MCP bridge, registrations, models and the index, and formats a report. It never throws.
 
 **Exports**
-* DoctorDeps (interface): Defines the dependencies required for running diagnostics.
-* OUTBOUND_HINT (const): A string providing instructions for allowing loopback hosts.
-* runChecks(d: DoctorDeps): Returns a list of Check objects by executing all diagnostic functions.
-* formatReport(checks: Check[]): Returns a formatted string representation of the diagnostic results.
+- `DoctorDeps`: `cfg`, `client`, `bridgeUrl`, optional `bridgeState` (`ok | elsewhere | failed`), `token`, `indexedFiles`, `indexReady`.
+- `Check`: `name`, `ok`, `detail`, optional `fix`, `setup` (running setup would fix it), `warn`.
+- `OUTBOUND_HINT`: tells the user to start TrueForge with `OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]'` because loopback is blocked by default.
+- `runChecks(deps)`, `formatReport(checks)`.
 
 **Collaborators**
-* Imports:
-    * `@modelcontextprotocol/sdk/client/index.js`: Provides the Client for bridge communication.
-    * `@modelcontextprotocol/sdk/client/streamableHttp.js`: Provides the transport for the MCP bridge.
-    * `@truefoundry/trueforge-sdk`: Provides the TrueForge client type.
-    * `../core/config`: Provides the AnvilConfig type.
-    * `../trueforge/client`: Provides the checkHealth function.
-    * `../trueforge/setup`: Provides the MCP_SERVER_NAME constant.
-* Exports used by: Not visible from this file.
+- Imports: MCP SDK `Client` and `StreamableHTTPClientTransport`, TrueForge SDK type, `core/config` (type), `trueforge/client` (`checkHealth`), `trueforge/setup` (`MCP_SERVER_NAME`).
+- Used by: `extension.ts`.
 
 **Key behaviour and invariants**
-* The `guard` function catches all errors in check functions and returns a `Check` object with `ok: false`.
-* `checkBridge` considers the bridge healthy if it returns at least 10 tools.
-* `checkBridge` treats `bridgeState === 'elsewhere'` as a warning (`warn: true`) rather than a failure.
-* `checkRegistered` validates that the URL in TrueForge settings matches the `bridgeUrl`.
-* `checkAgents` verifies that both `anvil-coder` and `anvil-inline` are registered.
-* `checkModels` verifies that all models in `d.cfg.models` exist in the TrueForge model list.
-* `checkIndex` considers the index ready only if `indexReady` is true and `indexedFiles` is greater than 0.
-* `runChecks` skips registration, agent, and model checks if the TrueForge reachability check fails.
+- Checks, in order: TrueForge reachable, MCP bridge, bridge registered in TrueForge, agents registered, models configured, code index.
+- `guard` turns any thrown error into a failed check with the error message. If TrueForge is unreachable, the registration, agents and models checks are reported as failed with "skipped (TrueForge unreachable)" instead of running.
+- Bridge: connects to the bridge with the bearer token and lists tools; healthy only with at least 10 tools. `bridgeState === 'elsewhere'` is `ok` with `warn` (another window owns the port); no bridge URL is a failure.
+- Registration: the URL stored for the MCP server in TrueForge must equal the running bridge URL (`setup: true` otherwise). Agents: both `anvil-coder` and `anvil-inline` must exist. Models: `anvil.models` must be non-empty and every entry must match a TrueForge model `name` or `modelId` (lists up to 20 available names otherwise).
+- Index: ok only if ready and more than 0 files.
+- `formatReport` prefixes `✓`, `⚠` (ok with warning) or `✗`, adding a `fix:` (or `hint:` for warnings) line when available.
 
 **Notes**
-* The `msg` helper converts non-Error objects to strings.
-* `client.close()` in `checkBridge` catches errors and returns `undefined`.
-* `formatReport` uses `⚠` for warnings, `✓` for success, and `✗` for failures.
-* `OUTBOUND_HINT` specifically addresses loopback blocks for `127.0.0.1` and `localhost`.
+- The bridge test client is always closed, ignoring close errors.

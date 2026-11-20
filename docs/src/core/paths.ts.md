@@ -1,24 +1,23 @@
 # `src/core/paths.ts`
 
 **Purpose**
-This file provides utility functions to manage and validate file paths within a workspace. It ensures that paths remain inside the workspace boundaries.
+Pure path guard that keeps tool paths inside the workspace root.
 
 **Exports**
-* PathError: class - Represents an error when a path is invalid or outside the workspace.
-* resolveInWorkspace(root: string, p: string): string - function - Resolves a path and throws an error if it escapes the workspace.
-* toRelative(root: string, abs: string): string - function - Converts an absolute path to a relative path using POSIX separators.
+- `PathError` (class, extends `Error`): thrown for invalid or escaping paths.
+- `resolveInWorkspace(root, p)`: returns an absolute path inside `root`.
+- `toRelative(root, abs)`: returns a workspace-relative path with `/` separators.
 
 **Collaborators**
-* Imports: node:path
-* Exports used by: Not visible from this file.
+- Imports: `node:path`.
+- Used by: the MCP tools, inline edit, workspace host.
 
 **Key behaviour and invariants**
-* Throws PathError if the input contains a NUL character.
-* Throws PathError if the resolved path is outside the workspace root.
-* Replaces backslashes with forward slashes in the input path.
-* Returns the root path if the input path is empty or a dot.
-* resolveInWorkspace returns an absolute path. toRelative returns a path with forward slashes.
-* Returns a dot if the relative path is empty.
+- Throws `PathError` if `p` contains a NUL character.
+- Backslashes become `/`; leading `./` segments are stripped.
+- Empty or `.` resolves to the root itself.
+- Throws `PathError` if the resolved path is `..`, starts with `../`, or is absolute relative to the root (this includes absolute paths outside the root).
+- `toRelative` returns `.` for the root.
 
 **Notes**
-The host handles symlink realpath checks; this file does not check symlinks.
+- Symlink `realpath` checks are not done here; the host does them (see `host/realPath.ts`).

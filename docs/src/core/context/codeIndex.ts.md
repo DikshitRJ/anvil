@@ -1,40 +1,23 @@
 # `src/core/context/codeIndex.ts`
 
 **Purpose**
-Provides an in-memory index of a codebase including file contents, symbols, chunks, and an import graph. It enables efficient searching, symbol lookups, and repository mapping.
+In-memory index of the workspace: file contents, symbols, chunks, BM25 search, import graph, grep, and a repository map.
 
 **Exports**
-* CodeIndex(root: string): class: Represents the primary index structure and provides methods for indexing and querying the codebase.
+- `CodeIndex(root)`: `build(onProgress?)`, `updateFile`, `removeFile`, `files`, `getContent`, `symbolsOf`, `chunksOf`, `search`, `findSymbol`, `grep` (+ `grepTruncated` flag), `neighbors`, `repoMap`.
 
 **Collaborators**
-* Imports:
-    * `node:fs`: Used to read file contents from the filesystem.
-    * `node:path`: Used to handle and join file paths.
-    * `picomatch`: Used to filter files based on glob patterns.
-    * `./assemble`: Used to estimate token counts for repository mapping.
-    * `./bm25`: Used to manage the BM25 search index.
-    * `./chunker`: Used to split file contents into searchable chunks.
-    * `./imports`: Used to extract and resolve import specifications.
-    * `./symbols`: Used to extract symbol information from content.
-    * `./tokenize`: Used to convert strings into tokens for indexing and searching.
-    * `./types`: Provides type definitions for Chunk, SearchHit, and SymbolInfo.
-    * `./walker`: Used to recursively walk the workspace directory.
-* Exports used by: Not visible from this file.
+- Imports: `node:fs`, `node:path`, `picomatch`, `assemble` (`estimateTokens`), `bm25`, `chunker`, `imports`, `symbols`, `tokenize`, `types`, `walker`.
+- Used by: `assemble.ts`, `rank.ts`, `host/indexService.ts`, MCP tools.
 
 **Key behaviour and invariants**
-* `CONCURRENCY` is set to 32 for parallel file processing.
-* `MAX_PER_FILE` is set to 3, limiting the number of search hits returned per file.
-* `GREP_MAX_LINES` is set to 200,000 and `GREP_MAX_MS` is set to 200 for grep execution limits.
-* `safeRegExp` falls back to a literal search if a pattern contains a `NESTED_QUANTIFIER`.
-* `build` skips files containing a `NUL` byte in the first 8192 bytes.
-* `search` applies a 1.25 score multiplier if a query token exists in the file's path tokens.
-* `search` applies a 1.4 score multiplier if the last segment of a chunk's symbol matches an identifier in the query.
-* `findSymbol` returns up to 20 results based on a multi-stage matching process.
-* `repoMap` defaults to a `maxTokens` limit of 1500.
-* `dirLines` limits the directory tree depth to the top 2 levels.
+- `build` walks the workspace and reads files with 32 workers. Files that fail to read, or contain a NUL byte in the first 8 KB (binary), are skipped. `onProgress(done, total)` is called per file.
+- `updateFile` removes the old entry first, then indexes symbols, chunks, path tokens and imports; BM25 text weights path tokens twice and symbol tokens three times. `removeFile` clears every map and the BM25 entries. Both invalidate the cached import graph.
+- `search(query, k = 10)`: BM25 over chunks, x1.25 if a query token is in the path, x1.4 if the chunk symbol's last segment is an identifier-like word in the query; ties by chunk id; at most 3 hits per file.
+- `findSymbol(name, kind?)`: staged matching (exact, case-insensitive, qualified suffix, prefix, substring) stopping once 20 are found; returns at most 20.
+- `grep(pattern, {glob, limit = 100, ignoreCase})`: model patterns that are invalid or contain a nested quantifier fall back to a literal search (ReDoS guard). Scanning stops at 200,000 lines or 200 ms (checked every 1000 lines) and sets `grepTruncated`. Lines are trimmed and cut to 200 chars.
+- `neighbors(rel)`: sorted 1-hop imports in both directions; graph built lazily and cached.
+- `repoMap({maxTokens = 1500, focus})`: header with file count, a directory tree (top 2 levels with file counts), then top-level symbol signatures (each cut to 120 chars) of focus files (default: the 10 files with most top-level symbols); output is cut line by line at the token budget.
 
 **Notes**
-* `grep` sets `grepTruncated` to true if the scan budget is exceeded.
-* `updateFile` clears the existing index for a file before re-indexing.
-* `importGraph` is lazily initialized and cached in the `graph` property.
-* `removeFile` deletes entries from all internal maps and the BM25 index.
+- Content is held in memory; only text files are indexed.
