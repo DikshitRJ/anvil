@@ -254,6 +254,10 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     createSession: () => inlineSession(run, defs.inline, cfg),
     applyAccepted: (p, b, a, s) => run.applyStandalone(p, b, a, s),
     log,
+    onModelSwitch: (from, to, reason) => {
+      statusBar.setModel(to);
+      panel.post({ type: 'modelSwitch', runId: 'inline', from, to, reason });
+    },
   });
   registerCommands(context, { run, setup, doctor, panel, cfg: () => cfg });
   indexSvc.start();
