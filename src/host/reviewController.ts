@@ -278,12 +278,15 @@ export class ReviewController implements vscode.Disposable {
       const l = Math.min(line, Math.max(doc.lineCount - 1, 0));
       return new vscode.CodeLens(new vscode.Range(l, 0, l, 0), { title, command, arguments: args });
     };
+    // Summary lenses sit on the first hunk (not line 0, which is usually scrolled away and can render stale).
+    const anchors = m.anchors();
+    const first = anchors[0]?.line ?? 0;
     const out = [
-      lens(0, 'Accept all', 'anvil.review.acceptAll', [s.id]),
-      lens(0, 'Reject all', 'anvil.review.rejectAll', [s.id]),
-      lens(0, `$(info) ${m.decidedCount} of ${m.total} decided`),
+      lens(first, 'Accept all', 'anvil.review.acceptAll', [s.id]),
+      lens(first, 'Reject all', 'anvil.review.rejectAll', [s.id]),
+      lens(first, `$(info) ${m.decidedCount} of ${m.total} decided`),
     ];
-    for (const a of m.anchors()) out.push(...this.hunkLenses(s, a.hunkId, a.line, lens));
+    for (const a of anchors) out.push(...this.hunkLenses(s, a.hunkId, a.line, lens));
     return out;
   }
 
