@@ -50,3 +50,38 @@ describe('CommandRunner', () => {
     runner.dispose();
   });
 });
+
+describe('command deadlines', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('escalates an unresponsive child from term to kill after the grace period', async () => {
+    vi.useFakeTimers();
+    const child = childProcess();
+    mocks.spawn.mockReturnValue(child);
+    const runner = new CommandRunner();
+    const result = runner.run('slow', { cwd: '/workspace', timeoutMs: 100 });
+    vi.advanceTimersByTime(99);
+    expect(child.kill).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(child.kill.mock.calls).toEqual([['SIGTERM']]);
+    vi.advanceTimersByTime(2000);
+    expect(child.kill.mock.calls).toEqual([['SIGTERM'], ['SIGKILL']]);
+    child.emit('close', null);
+    expect(await result).toEqual({ output: '', exitCode: null, timedOut: true });
+    runner.dispose();
+  });
+
+  it('cancels escalation when the child closes during the grace period', async () => {
+    vi.useFakeTimers();
+    const child = childProcess();
+    mocks.spawn.mockReturnValue(child);
+    const runner = new CommandRunner();
+    const result = runner.run('slow', { cwd: '/workspace', timeoutMs: 100 });
+    vi.advanceTimersByTime(100);
+    child.emit('close', null);
+    await result;
+    vi.advanceTimersByTime(3000);
+    expect(child.kill.mock.calls).toEqual([['SIGTERM']]);
+    runner.dispose();
+  });
+});
