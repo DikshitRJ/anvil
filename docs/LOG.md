@@ -67,3 +67,20 @@ Chronological log of major actions, phase outcomes and notable events. Times are
   bridge, edge cases), #39 (ranking priors, grep budget, safe delimiter, real-module MCP tests), #42 (run-scoped
   approvals, cancellation guards, error handling, isBusy wiring; rebased replacement for #38 since force-push was
   denied).
+
+### Phase 6 (cont.) — e2e findings and second review round
+- e2e found and we fixed: placeholder model at agent registration (#40 → #48, e2e agent-registration test
+  un-skipped and green) and the TrueForge loopback allowlist requirement (#41 → README, setup script, Doctor hints).
+- Gemini findings fixed: per-line EOL preservation and EOL-only hunks (#44 → #50); revert on error, tab-close cancels
+  review, dismissed questions, eviction-proof per-run base snapshots (#45 → #49); ledger TTL on take, full-path
+  listFiles globs, resubscribe counter (#46 → #49).
+
+### Phase 7 — Releases and final QA
+- `v0.1.1` (all review fixes) and `v0.1.2` released from tags; each run attached `anvil-<tag>.vsix`.
+- Local QA of each release (downloaded from GitHub Releases, isolated VS Code profile, driven over CDP) found:
+  error text missing the URL (fixed in v0.1.1), path-match noise from common tokens (#51 → #53), and a retry refused
+  while an error toast was open because the handler awaited the toast (#52). Verified fixed in v0.1.2.
+- Per-file docs mirror refreshed to 55 pages (#54). OpenSpec change `add-anvil-v1` archived; 7 capability specs
+  now live in `openspec/specs/`.
+- Final state: 0 open issues; main CI green (lint, types, format, package; 257 unit/integration tests; real-TrueForge
+  e2e; VS Code smoke suite).
