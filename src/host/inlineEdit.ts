@@ -124,7 +124,7 @@ async function runJob(j: Job): Promise<void> {
     session = j.deps.createSession(); // may throw (no models configured): create before opening the review
   } catch (e) {
     activeCancel = undefined;
-    await reportError(e);
+    void reportError(e);
     return;
   }
   const live = j.deps.review.openLive({
@@ -168,8 +168,8 @@ async function runJob(j: Job): Promise<void> {
     }
   } catch (e) {
     live.cancel();
-    if (cancelled) return;
-    await reportError(e);
+    // Never await the toast: it settles only when dismissed and would hold the inline-edit slot until then.
+    if (!cancelled) void reportError(e);
   } finally {
     activeCancel = undefined;
     void vscode.commands.executeCommand('setContext', 'anvil.running', false);
