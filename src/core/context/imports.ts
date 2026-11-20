@@ -56,8 +56,10 @@ function pythonCandidates(rel: string, s: ImportSpec): string[] {
 
 function jsCandidates(rel: string, s: ImportSpec): string[] {
   const base = path.posix.join(path.posix.dirname(rel), s.module);
-  const hasExt = JS_EXT.some((e) => base.endsWith(e));
-  return [...(hasExt ? [base] : []), ...JS_EXT.map((e) => base + e), ...JS_EXT.map((e) => `${base}/index${e}`)];
+  const sourceExts: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.jsx': ['.tsx', '.ts'] };
+  const ext = path.posix.extname(base);
+  if (JS_EXT.includes(ext)) return [base, ...(sourceExts[ext] ?? []).map((e) => base.slice(0, -ext.length) + e)];
+  return [...JS_EXT.map((e) => base + e), ...JS_EXT.map((e) => `${base}/index${e}`)];
 }
 
 // Indexed files that `rel` imports.
@@ -66,7 +68,11 @@ export function resolveImports(rel: string, specs: ImportSpec[], known: Readonly
   const out = new Set<string>();
   for (const s of specs) {
     const cands = py ? pythonCandidates(rel, s) : jsCandidates(rel, s);
-    for (const c of cands) if (known.has(c) && c !== rel) out.add(c);
+    for (const c of cands) {
+      if (!known.has(c) || c === rel) continue;
+      out.add(c);
+      if (!py) break;
+    }
   }
   return [...out];
 }

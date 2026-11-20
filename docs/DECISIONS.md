@@ -218,3 +218,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-029 — Nonpositive retrieval limits mean no results
 **Context.** Search and grep emitted one result for zero limits, while BM25 negative slicing returned unintended results.
 **Decision.** Return no results before scanning or ranking when the requested result count is nonpositive.
+
+## D-030 — Resolve emitted JavaScript imports to indexed sources
+**Context.** TypeScript source often imports `.js` paths, leaving import neighbours empty before compilation.
+**Decision.** Prefer an exact indexed path; otherwise try TypeScript source extensions and use the first existing JavaScript-family candidate.
