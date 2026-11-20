@@ -18,7 +18,7 @@ function bestCenter(hits: number[]): number {
 function grow(lines: string[], center: number, maxChars: number): [number, number] {
   let lo = center;
   let hi = center;
-  let used = (lines[center] ?? '').length + 1;
+  let used = (lines[center] ?? '').length;
   let up = true;
   for (let stuck = 0; stuck < 2; up = !up) {
     const next = up ? lo - 1 : hi + 1;

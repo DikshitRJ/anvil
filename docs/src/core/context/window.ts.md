@@ -17,3 +17,5 @@ Trims an oversized chunk to a window of lines around the lines that best match t
 
 **Notes**
 - If even the centre line exceeds the limit, only its first `maxChars` characters are kept.
+
+- Line windows charge only separating newlines, so an adjacent line that exactly fits is retained.

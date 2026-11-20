@@ -210,3 +210,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-027 — Finalize child processes once
 **Context.** Node emits close after spawn errors, producing duplicate exit messages.
 **Decision.** Guard completion so timer cleanup, running-set removal, and exit reporting happen once.
+
+## D-028 — Charge only actual window separators
+**Context.** Window growth charged a nonexistent trailing newline and discarded an exact-fit adjacent line.
+**Decision.** Initialize usage with the center line length; each additional line costs its length plus one separator.
