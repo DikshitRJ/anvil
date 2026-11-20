@@ -195,3 +195,10 @@ busy, and a real stall also cancels pending reviews and kills commands before re
 **Decision.** Ledger keys are `runId|canonicalKey`, the approval flow is cleared at run end, on cancel and before a
 retry, and `isRunActive()` is false as soon as a run is cancelled. A write whose target changed while its review was
 open is refused, so the agent must re-read and propose again.
+
+## D-025 — Compaction uses TrueForge's context-relative default; smaller read windows
+**Context.** Live QA with a 16k-context local model: the agent spec's fixed 60k-token compaction trigger never fired,
+the window filled with 400-line `read_file` results, and the model's output was truncated.
+**Decision.** Keep compaction enabled but omit the trigger so TrueForge compacts at 80% of the configured model's
+context length. `read_file` returns 250-line windows (16 KB cap) by default; the agent can request more explicitly.
+**Supersedes** the explicit 60k trigger in PLAN Appendix A.

@@ -140,7 +140,7 @@ Key fields in `anvil-coder.json`:
 - `mcp_servers[0].require_approval_for_tools` lists `edit_file`, `write_file` and `run_command`. TrueForge pauses each of these calls and asks Anvil for a decision. Anvil opens the per-hunk review or the command prompt, and the answer returns to TrueForge as `user.tool_approval`.
 - `mcp_servers[0].preload` is `false`, and `preload_tools` lists `search_code`, `read_file`, `edit_file` and `write_file`. The other editor tools are discovered on demand (deferred tool loading).
 - `config.dynamic_sub_agents` is enabled. The coder may delegate broad reconnaissance to a subagent, which returns only a summary.
-- `config.context_management.compaction` summarises older history once input reaches 60 000 tokens.
+- `config.context_management.compaction` summarises older history at TrueForge's default trigger, 80% of the model's context length (a fixed trigger would never fire on small local models).
 - `config.iteration_limit` is 60, which caps the number of iterations the agent loop may run in one turn.
 
 Key fields in `anvil-inline.json`:

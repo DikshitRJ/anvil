@@ -24,7 +24,7 @@ Anvil is a TrueForge client and an MCP server. It has no model code.
   - *Tool approval* makes the review the single path to disk.
   - *Deferred tool loading.* Four core tools are preloaded (`search_code`, `read_file`, `edit_file`, `write_file`). The rest are discovered on demand, which keeps the root context small.
   - *Dynamic subagents.* The coder may delegate broad reconnaissance, such as how CLI commands are registered and tested, to a subagent that returns only a summary. Approvals from a subagent are routed by thread id.
-  - *Compaction.* Older history is summarised when input reaches 60 000 tokens, so long sessions survive.
+  - *Compaction.* Older history is summarised at TrueForge's default trigger (80% of the model's context window), so long sessions survive on small and large models alike.
   - *sessions.update for fallback.* When the Model Relay switches model, it updates the same session's spec. History is kept, and the session shows both attempts.
 - **Not used.** Skills, Code Mode and large-response offloading need TrueForge's sandbox, which is a cloud service. The brief requires local mode, so we do not use them (D-012).
 

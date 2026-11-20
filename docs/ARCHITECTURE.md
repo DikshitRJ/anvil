@@ -150,7 +150,7 @@ attempt is cancelled and classified as transient.
 | Tool approval (`require_approval_for_tools`) | Drives Anvil's per-hunk review and command approval |
 | Deferred tool loading | Anvil server attached with `preload:false`; core tools (`search_code`, `read_file`, `edit_file`, `write_file`) in `preload_tools`; the rest discovered on demand |
 | Dynamic subagents | The coder may delegate reconnaissance ("map how CLI commands are registered and tested") to a subagent; only its summary returns; approvals from subagent threads are routed by `thread_id` |
-| Compaction | Explicit trigger (60k input tokens) for long multi-turn sessions |
+| Compaction | Enabled with TrueForge's default trigger (80% of the model's context length) so it also works on small local models |
 | Sessions view | Every run is inspectable in TrueForge UI; the panel links to `http://localhost:8790/sessions/<id>` |
 
 ## 6. Source layout
