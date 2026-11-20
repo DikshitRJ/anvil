@@ -13,7 +13,7 @@ export const DEFAULT_CONFIG: AnvilConfig = {
   trueforgeUrl: 'http://localhost:8790',
   models: [],
   retriesPerModel: 1,
-  stallTimeoutSec: 45,
+  stallTimeoutSec: 120,
   contextBudget: 12000,
   mcpPort: 7801,
   cancelBehavior: 'revert',

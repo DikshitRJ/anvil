@@ -258,7 +258,7 @@ All settings use the `anvil.` prefix. Numeric values are clamped to sane ranges 
 | `anvil.trueforgeUrl`      | `http://localhost:8790` | TrueForge base URL                                    |
 | `anvil.models`            | `[]`                    | Ordered model chain, `provider/model`                 |
 | `anvil.retriesPerModel`   | `1`                     | Transient retries on one model before switching       |
-| `anvil.stallTimeoutSec`   | `45`                    | Seconds without an event before a stall is retried    |
+| `anvil.stallTimeoutSec`   | `120`                   | Seconds without an event before a stall is retried    |
 | `anvil.contextBudget`     | `12000`                 | Token budget for the context pack in each request     |
 | `anvil.mcpPort`           | `7801`                  | Port of the MCP bridge on 127.0.0.1                   |
 | `anvil.cancelBehavior`    | `revert`                | `revert` undoes a cancelled run; `keep` keeps changes |
