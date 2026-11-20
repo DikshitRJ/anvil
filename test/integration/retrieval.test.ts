@@ -94,6 +94,22 @@ describe('retrieval on mini-flask', () => {
   });
 });
 
+describe('path-match noise (#51)', () => {
+  const PROMPT = 'Add a flask config command that prints the app config as JSON';
+
+  it('examples/ and root dotfile configs do not outrank cli.py or config.py', () => {
+    const pack = assembleContext(index, signals(PROMPT), 12000);
+    const ranked = pack.items.filter((i) => i.kind !== 'repo-map').map((i) => i.path);
+    const noise = (p: string): boolean => p.startsWith('examples/') || p === '.pre-commit-config.yaml';
+    const firstNoise = ranked.findIndex(noise);
+    for (const good of ['src/flask/cli.py', 'src/flask/config.py']) {
+      const at = ranked.indexOf(good);
+      expect(at).toBeGreaterThanOrEqual(0);
+      if (firstNoise >= 0) expect(at).toBeLessThan(firstNoise);
+    }
+  });
+});
+
 describe('path priors and chunk cap (#23)', () => {
   it('Task B: top item is a cli.py code chunk and no changelog is in the top 5', () => {
     const pack = assembleContext(index, signals(TASK_B), 12000);
