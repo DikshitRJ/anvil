@@ -16,7 +16,7 @@ afterEach(() => mock.stop());
 describe('ensureSetup', () => {
   const opts = () => {
     const { coder, inline } = loadAgentDefinitions();
-    return { mcpUrl: 'http://127.0.0.1:9/mcp', token: 'tok', agents: [coder, inline] };
+    return { mcpUrl: 'http://127.0.0.1:9/mcp', token: 'tok', agents: [coder, inline], models: ['mock/mock-coder'] };
   };
 
   it('registers the MCP server with header auth and creates then updates agents', async () => {
@@ -36,6 +36,20 @@ describe('ensureSetup', () => {
     expect(second.mcpServer).toBe('updated');
     expect(mock.find('POST', '/agents')).toHaveLength(2);
     expect(mock.find('PUT', '/agents/')).toHaveLength(2);
+  });
+
+  it('substitutes the first configured model into each agent manifest', async () => {
+    await ensureSetup(createClient(url), { ...opts(), models: ['a/first', 'b/second'] });
+    const sent = mock.find('POST', '/agents').map((r) => r.body.manifest.model.name);
+    expect(sent).toEqual(['a/first', 'a/first']);
+  });
+
+  it('skips agent registration when no models are configured', async () => {
+    const report = await ensureSetup(createClient(url), { ...opts(), models: [] });
+    expect(report.agents).toEqual({ 'anvil-coder': 'failed', 'anvil-inline': 'failed' });
+    expect(report.errors).toContain('agent anvil-coder: Set anvil.models to register agents');
+    expect(mock.find('POST', '/agents')).toHaveLength(0);
+    expect(mock.find('PUT', '/agents/')).toHaveLength(0);
   });
 
   it('collects errors instead of throwing', async () => {

@@ -177,7 +177,12 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     if (!bridge)
       return void vscode.window.showErrorMessage('Anvil: MCP bridge is not running; cannot register it in TrueForge.');
     try {
-      const report = await ensureSetup(client, { mcpUrl: bridge.url, token, agents: [defs.coder, defs.inline] });
+      const report = await ensureSetup(client, {
+        mcpUrl: bridge.url,
+        token,
+        agents: [defs.coder, defs.inline],
+        models: cfg.models,
+      });
       log(`setup report: ${JSON.stringify(report)}`);
       if (report.errors.length)
         void vscode.window.showErrorMessage(`Anvil setup problems: ${report.errors.join('; ')}`);

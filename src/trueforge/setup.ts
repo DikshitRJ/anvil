@@ -1,6 +1,6 @@
 // Idempotent first-run setup: registers the Anvil MCP server and the agent definitions in TrueForge.
 import type { TrueForge } from '@truefoundry/trueforge-sdk';
-import type { AgentDefinition } from './spec';
+import { buildSpec, type AgentDefinition } from './spec';
 
 export const MCP_SERVER_NAME = 'anvil-editor';
 
@@ -12,8 +12,9 @@ export interface SetupReport {
 
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-async function upsertAgent(client: TrueForge, def: AgentDefinition): Promise<void> {
-  const { name, description, manifest } = def;
+async function upsertAgent(client: TrueForge, def: AgentDefinition, model: string): Promise<void> {
+  const { name, description } = def;
+  const manifest = buildSpec(def, model);
   for await (const agent of await client.agents.list({ agentName: name })) {
     if (agent.name === name) {
       await client.agents.update(agent.id, { description, manifest });
@@ -25,7 +26,7 @@ async function upsertAgent(client: TrueForge, def: AgentDefinition): Promise<voi
 
 export async function ensureSetup(
   client: TrueForge,
-  opts: { mcpUrl: string; token: string; agents: AgentDefinition[]; serverName?: string },
+  opts: { mcpUrl: string; token: string; agents: AgentDefinition[]; models: string[]; serverName?: string },
 ): Promise<SetupReport> {
   const report: SetupReport = { mcpServer: 'created', agents: {}, errors: [] };
   const serverName = opts.serverName ?? MCP_SERVER_NAME;
@@ -48,9 +49,15 @@ export async function ensureSetup(
     report.mcpServer = 'failed';
     report.errors.push(`mcp server: ${errText(e)}`);
   }
+  const model = opts.models[0];
   for (const def of opts.agents) {
+    if (!model) {
+      report.agents[def.name] = 'failed';
+      report.errors.push(`agent ${def.name}: Set anvil.models to register agents`);
+      continue;
+    }
     try {
-      await upsertAgent(client, def);
+      await upsertAgent(client, def, model);
       report.agents[def.name] = 'ok';
     } catch (e) {
       report.agents[def.name] = 'failed';
