@@ -12,8 +12,8 @@ const roundTrip = (o: string, p: string): void => {
 
 describe('splitLines', () => {
   it('detects eol and trailing newline', () => {
-    expect(splitLines('a\r\nb\r\n')).toEqual({ lines: ['a', 'b'], eol: '\r\n', trailingNewline: true });
-    expect(splitLines('a\nb')).toEqual({ lines: ['a', 'b'], eol: '\n', trailingNewline: false });
+    expect(splitLines('a\r\nb\r\n')).toMatchObject({ lines: ['a', 'b'], eol: '\r\n', trailingNewline: true });
+    expect(splitLines('a\nb')).toMatchObject({ lines: ['a', 'b'], eol: '\n', trailingNewline: false });
     expect(splitLines('').lines).toEqual([]);
   });
 });
@@ -77,5 +77,53 @@ describe('summarizeHunk', () => {
     expect(s).toContain('@@ -0,0 +1,20 @@');
     expect(s).toContain('… (15 more lines)');
     expect(s.split('\n')).toHaveLength(1 + 5 + 1);
+  });
+});
+
+describe('mixed line endings (#44)', () => {
+  const mixed = 'a\r\nb\nc\r\nd\ne\r\n';
+  it('keeps untouched terminators when accepting one hunk', () => {
+    const p = 'a\r\nb\nC\r\nd\ne\r\n';
+    const hunks = computeHunks(mixed, p);
+    expect(hunks).toHaveLength(1);
+    expect(applyHunks(mixed, hunks, new Set([0]))).toBe(p);
+    const two = computeHunks(mixed, 'A\r\nb\nc\r\nd\nE\r\n');
+    expect(two).toHaveLength(2);
+    expect(applyHunks(mixed, two, new Set([1]))).toBe('a\r\nb\nc\r\nd\nE\r\n');
+    expect(applyHunks(mixed, two, new Set([0]))).toBe('A\r\nb\nc\r\nd\ne\r\n');
+  });
+  it('inserts lines with the dominant eol', () => {
+    const o = 'a\r\nb\r\nc\n';
+    const h = computeHunks(o, 'a\r\nX\r\nb\r\nc\n');
+    expect(applyHunks(o, h, new Set([0]))).toBe('a\r\nX\r\nb\r\nc\n');
+  });
+});
+
+describe('eol / trailing-newline-only changes (#44)', () => {
+  it('surfaces an added final newline', () => {
+    const h = computeHunks('a\nb', 'a\nb\n');
+    expect(h).toHaveLength(1);
+    expect(h[0]?.eofOnly).toBe(true);
+    expect(applyHunks('a\nb', h, new Set([0]))).toBe('a\nb\n');
+  });
+  it('surfaces a removed final newline and a dominant eol change', () => {
+    expect(computeHunks('a\nb\n', 'a\nb')).toHaveLength(1);
+    const h = computeHunks('a\r\nb\r\n', 'a\nb\n');
+    expect(h).toHaveLength(1);
+    expect(applyHunks('a\r\nb\r\n', h, new Set([0]))).toBe('a\nb\n');
+  });
+  it('keeps an empty-to-empty file at zero hunks', () => {
+    expect(computeHunks('', '')).toHaveLength(0);
+  });
+  it('round-trips a matrix of eol and trailing-newline combinations', () => {
+    const bodies = [[], ['a'], ['a', 'b'], ['a', 'b', 'c'], ['a', 'x', 'c'], ['q']];
+    const texts: string[] = [];
+    for (const lines of bodies)
+      for (const eol of ['\n', '\r\n'])
+        for (const trail of [true, false]) {
+          const t = lines.join(eol) + (trail && lines.length ? eol : '');
+          if (!texts.includes(t)) texts.push(t);
+        }
+    for (const o of texts) for (const p of texts) roundTrip(o, p);
   });
 });

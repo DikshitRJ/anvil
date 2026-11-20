@@ -5,9 +5,23 @@ const orig = 'a\nb\nc\nd\ne\nf\ng\n';
 const prop = 'a\nB1\nB2\nc\nd\ne\ng\n'; // hunk0: b -> B1,B2 (+1 line); hunk1: delete f
 
 describe('ReviewModel', () => {
+  it('applies a change with zero hunks instead of reporting a rejection', () => {
+    expect(new ReviewModel('', '').outcome().content).toBeNull();
+    const o = 'a\r\nb\r\nc\n';
+    const p = 'a\r\nb\r\nc\r\n';
+    const out = new ReviewModel(o, p).outcome();
+    expect(out.feedback).not.toContain('rejected');
+    expect(out.content === p || out.total > 0).toBe(true);
+  });
+  it('reports a newline-only change as a reviewable hunk', () => {
+    const m = new ReviewModel('a\nb', 'a\nb\n');
+    expect(m.total).toBe(1);
+    m.decideAll('accepted');
+    expect(m.outcome().content).toBe('a\nb\n');
+  });
   it('has no hunks for identical text', () => {
     const m = new ReviewModel('x\n', 'x\n');
-    expect(m.outcome()).toEqual({ content: null, accepted: 0, total: 0, feedback: 'No changes were proposed.' });
+    expect(m.outcome()).toEqual({ content: null, accepted: 0, total: 0, feedback: 'No visible changes.' });
   });
 
   it('accept all returns proposed content', () => {

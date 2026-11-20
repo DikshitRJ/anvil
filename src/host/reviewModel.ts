@@ -29,7 +29,7 @@ export class ReviewModel {
 
   constructor(
     readonly original: string,
-    proposed: string,
+    private readonly proposed: string,
   ) {
     this.hunks = computeHunks(original, proposed);
     for (const h of this.hunks) this.decisions.set(h.id, 'pending');
@@ -67,14 +67,23 @@ export class ReviewModel {
   outcome(): ReviewOutcome {
     const accepted = this.acceptedCount;
     const set = new Set(this.hunks.filter((h) => this.decisionOf(h.id) === 'accepted').map((h) => h.id));
-    const content = accepted === 0 ? null : applyHunks(this.original, this.hunks, set);
+    // Zero hunks means nothing to review: nothing was rejected, so a real difference (e.g. empty-file creation,
+    // mixed-EOL normalization the diff cannot show) is applied as is; identical text yields null.
+    const content =
+      this.total === 0
+        ? this.proposed === this.original
+          ? null
+          : this.proposed
+        : accepted === 0
+          ? null
+          : applyHunks(this.original, this.hunks, set);
     return { content, accepted, total: this.total, feedback: this.feedback() };
   }
 
   feedback(): string {
     const n = this.total;
     const a = this.acceptedCount;
-    if (n === 0) return 'No changes were proposed.';
+    if (n === 0) return 'No visible changes.';
     if (a === n) return `Accepted all ${n} hunk(s).`;
     const rejected = this.hunks
       .filter((h) => this.decisionOf(h.id) === 'rejected')
