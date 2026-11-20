@@ -34,6 +34,7 @@ export class CommandRunner implements vscode.Disposable {
     return new Promise((resolve) => {
       const out = new CappedOutput();
       let timedOut = false;
+      let completed = false;
       const child = spawn(command, {
         shell: true,
         cwd: opts.cwd,
@@ -52,6 +53,8 @@ export class CommandRunner implements vscode.Disposable {
         terminate(child);
       }, opts.timeoutMs);
       const done = (exitCode: number | null): void => {
+        if (completed) return;
+        completed = true;
         clearTimeout(timer);
         this.running.delete(child);
         this.channel.appendLine(`[exit ${exitCode}${timedOut ? ', timed out' : ''}]`);

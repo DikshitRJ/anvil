@@ -21,3 +21,4 @@ Runs shell commands for the `run_command` tool with capped output, a timeout, an
 - The exit line `[exit N, timed out]` is written to the channel only.
 
 - Each output stream uses its own UTF-8 decoder, retaining incomplete characters between byte chunks.
+- Completion is idempotent: a close event after a spawn error does not report a second exit.

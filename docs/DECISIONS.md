@@ -206,3 +206,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-026 — Decode command output per stream
 **Context.** Decoding each data buffer independently replaces split multibyte characters with replacement characters.
 **Decision.** Set UTF-8 encoding on stdout and stderr separately. Node buffers incomplete sequences per stream; decoded strings feed both the output cap and the channel.
+
+## D-027 — Finalize child processes once
+**Context.** Node emits close after spawn errors, producing duplicate exit messages.
+**Decision.** Guard completion so timer cleanup, running-set removal, and exit reporting happen once.

@@ -38,4 +38,15 @@ describe('CommandRunner', () => {
     expect(mocks.channel.append.mock.calls.flat().join('')).toBe('🙂€');
     runner.dispose();
   });
+  it('finalizes once when a spawn error is followed by close', async () => {
+    const child = childProcess();
+    mocks.spawn.mockReturnValue(child);
+    const runner = new CommandRunner();
+    const result = runner.run('missing', { cwd: '/workspace', timeoutMs: 1000 });
+    child.emit('error', new Error('spawn failed'));
+    child.emit('close', -1);
+    expect(await result).toEqual({ output: 'spawn error: spawn failed', exitCode: null, timedOut: false });
+    expect(mocks.channel.appendLine.mock.calls.filter(([line]) => line.startsWith('[exit'))).toEqual([['[exit null]']]);
+    runner.dispose();
+  });
 });
