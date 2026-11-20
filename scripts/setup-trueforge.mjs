@@ -40,6 +40,21 @@ const BLOCKED_PATTERN = /outbound|blocked|network.?polic|allowed.?hosts/i;
 const log = (msg) => console.log(msg);
 const warn = (msg) => console.warn(`warning: ${msg}`);
 
+/**
+ * The config and agent files use TrueForge's snake_case wire format; the SDK expects camelCase request objects
+ * (it serialises them back to snake_case). Keys inside `params` (model params) are passed through verbatim.
+ */
+function camelize(node, verbatim = false) {
+  if (Array.isArray(node)) return node.map((v) => camelize(v));
+  if (!node || typeof node !== 'object') return node;
+  const out = {};
+  for (const [key, value] of Object.entries(node)) {
+    const name = verbatim ? key : key.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+    out[name] = key === 'params' ? camelize(value, true) : verbatim ? value : camelize(value);
+  }
+  return out;
+}
+
 function describe(err) {
   const status = err?.statusCode ? `HTTP ${err.statusCode}: ` : '';
   return `${status}${err instanceof Error ? err.message : String(err)}`;
@@ -123,7 +138,9 @@ async function registerProviders(client, providers) {
   const outcomes = [];
   for (const manifest of providers) {
     const label = `model provider ${manifest.name}`;
-    outcomes.push(await attempt(label, () => client.settings.modelProviders.createOrUpdate({ manifest })));
+    outcomes.push(
+      await attempt(label, () => client.settings.modelProviders.createOrUpdate({ manifest: camelize(manifest) })),
+    );
   }
   return outcomes;
 }
@@ -145,12 +162,12 @@ async function loadAgent(file, defaultModel) {
   const def = await readJson(resolve(ROOT, file));
   const manifest = { ...def.manifest };
   if (defaultModel) manifest.model = { ...manifest.model, name: defaultModel };
-  return { name: def.name, description: def.description, manifest };
+  return { name: def.name, description: def.description, manifest: camelize(manifest) };
 }
 
 async function findAgentId(client, name) {
-  // The SDK's agents.list() returns an async-iterable Page; for await walks every page.
-  for await (const agent of client.agents.list()) {
+  // agents.list() resolves to an async-iterable Page; for await walks every page.
+  for await (const agent of await client.agents.list()) {
     if (agent.name === name) return agent.id;
   }
   return undefined;
@@ -158,8 +175,8 @@ async function findAgentId(client, name) {
 
 /**
  * Updates the agent when one with the same name exists, otherwise creates it.
- * NOTE: request field names follow the SDK's documented surface (agents.update(id, { manifest }),
- * agents.create({ name, description, manifest })). Verify against node_modules/@truefoundry/trueforge-sdk.
+ * Request shapes verified against @truefoundry/trueforge-sdk 0.185 (agents.update(id, { manifest }),
+ * agents.create({ name, description, manifest })) and a live TrueForge 0.185.1.
  */
 async function upsertAgent(client, agent) {
   return attempt(`agent ${agent.name}`, async () => {
