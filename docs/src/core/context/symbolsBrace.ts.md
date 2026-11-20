@@ -1,25 +1,22 @@
 # `src/core/context/symbolsBrace.ts`
 
 **Purpose**
-This file extracts symbols from source code files that use curly braces for block scoping. It identifies classes, interfaces, functions, and methods across multiple programming languages.
+Regex symbol extraction for brace languages: TS/JS, Go, Java/Kotlin/C#, Rust, C/C++.
 
 **Exports**
-* isBraceLanguage(ext: string): boolean - function - Checks if a file extension belongs to a supported brace-based language.
-* braceEnd(lines: string[], start: number): number - function - Calculates the end index of a code block starting from a specific line.
-* extractBrace(path: string, ext: string, lines: string[]): SymbolInfo[] - function - Parses a file to find and return all symbols and their nested members.
+- `isBraceLanguage(ext)`: whether the extension is supported (`.ts .tsx .js .jsx .mjs .cjs .java .kt .cs .c .h .cpp .hpp .cc .go .rs`).
+- `braceEnd(lines, start)`: 0-based end index of the block starting at a line.
+- `extractBrace(path, ext, lines)`: `SymbolInfo[]` sorted by line.
 
 **Collaborators**
-* Imports: `./types`
-* Exports: Not visible from this file.
+- Imports: `./types`.
+- Used by: `symbols.ts`.
 
 **Key behaviour and invariants**
-* The `braceEnd` function limits its search to 400 lines from the start index.
-* The `braceEnd` function returns the current index if no opening brace is found and the line ends with a semicolon.
-* The `members` function only includes methods that match the specific indentation of the first detected member.
-* The `extractBrace` function skips the body of a container after extracting its members.
-* Symbols are returned in ascending order of their line numbers.
-* The `NOT_METHOD` set prevents keywords like `if`, `for`, and `while` from being identified as symbols.
+- Per-language specs list declaration regexes (class, interface, type/enum, function, arrow-function consts, Go receiver methods with the receiver type as `container`, Rust `impl`/`trait`, C functions) plus an indented-method regex for container bodies.
+- `braceEnd` counts `{`/`}` from the declaration line, scanning at most 400 lines. If no `{` has been seen it ends at a line ending with `;` or after 5 lines (declarations without bodies). It does not understand braces in strings or comments.
+- Names in `NOT_METHOD` (`if for while switch catch return new else throw function`) are never symbols; the C regex also excludes control keywords.
+- For container kinds (`holds`), members are the lines matching the method regex that share the indentation of the first match; after extracting them the container body is skipped, so nested declarations are not extracted separately.
 
 **Notes**
-* The `GO` specification handles receiver types for methods.
-* The `C` specification uses a negative lookahead to exclude common keywords from function identification.
+- Methods get `container` = the enclosing class/impl/trait name.

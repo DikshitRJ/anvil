@@ -1,23 +1,22 @@
 # `src/core/agent/toolCalls.ts`
 
 **Purpose**
-This file converts raw tool calls into a standardized format. It handles different tool types and extracts server names and inputs.
+Resolves a raw TrueForge tool call to `{server, tool, input}`, unwrapping the deferred `call_tool` wrapper.
 
 **Exports**
-* RawToolCall: interface - Defines the structure of an incoming tool call.
-* ResolvedToolCall: interface - Defines the structure of a processed tool call.
-* resolveToolCall(call: RawToolCall, threadId: string): ResolvedToolCall - function - Converts a RawToolCall into a ResolvedToolCall.
+- `RawToolCall`: `id`, `function {name, arguments (JSON string)}`, optional `toolInfo {type, name, serverName}`.
+- `ResolvedToolCall`: `callId`, `threadId`, optional `server`, `tool`, `input`.
+- `resolveToolCall(call, threadId)`.
 
 **Collaborators**
-Imports: Not visible from this file.
-Exports: Not visible from this file.
+- Imports: none.
+- Used by: `events.ts`, run controller and approval flow.
 
 **Key behaviour and invariants**
-* The function returns an empty object if JSON parsing fails.
-* The function returns an empty object if the input is not a valid object.
-* The function returns undefined for the server if the value is not a string.
-* The function defaults the tool name to the function name if no specific name exists.
-* The function handles "truefoundry-system" and "mcp" tool types.
+- Arguments are parsed as JSON; invalid JSON, arrays, null or non-objects become `{}`.
+- `toolInfo.type === 'truefoundry-system'` with name `call_tool`: `server` is `args.mcp_server`, `tool` is `args.tool_name` (falls back to the function name), `input` is `args.input` (object, else `{}`). Non-string or empty values are `undefined`.
+- `toolInfo.type === 'mcp'`: `server` is `toolInfo.serverName`, tool is `toolInfo.name` (falls back to the function name), input is the parsed arguments.
+- Anything else: tool is the function name and input the parsed arguments.
 
 **Notes**
-The function treats null or undefined arguments as empty objects.
+- Never throws.

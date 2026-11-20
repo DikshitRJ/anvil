@@ -1,37 +1,22 @@
 # `src/core/context/rank.ts`
 
 **Purpose**
-This file implements candidate generation and weighted Reciprocal Rank Fusion (RRF) for context assembly. It ranks code chunks based on multiple signals including BM25 search results, symbol matches, path relevance, and editor state.
+Candidate generation and weighted Reciprocal Rank Fusion (RRF) that ranks chunks for the context pack.
 
 **Exports**
-* pathPrior(path: string): function: Returns a multiplier based on the file path to penalize non-edit targets.
-* Candidate: interface: Represents a ranked chunk with its score and reasons.
-* chunkRelevance(c: Chunk, q: Set<string>): function: Calculates a chunk's relevance score based on query token matches.
-* rankedChunks(index: CodeIndex, path: string, q: Set<string>): function: Returns a sorted list of chunks for a specific path.
-* chunkAt(index: CodeIndex, path: string, line: number): function: Retrieves a chunk at a specific line and path.
-* identifiers(query: string): function: Extracts quoted strings and camelCase/snake_case words from a query.
-* rankCandidates(index: CodeIndex, s: ContextSignals): function: Performs multi-signal fusion to return a sorted list of candidates.
+- `pathPrior(path)`, `Candidate` (`chunk`, `score`, `reasons`), `chunkRelevance(chunk, queryTokens)`, `rankedChunks(index, path, q)`, `chunkAt(index, path, line)`, `identifiers(query)`, `rankCandidates(index, signals)`.
 
 **Collaborators**
-* Imports:
-    * `./codeIndex`: Provides `CodeIndex` type for index operations.
-    * `./tokenize`: Provides `tokenize` function to split text into tokens.
-    * `./types`: Provides `Chunk` and `ContextSignals` types.
-* Exports used by: Not visible from this file.
+- Imports: `CodeIndex` (type), `tokenize`, `types`.
+- Used by: `assemble.ts`.
 
 **Key behaviour and invariants**
-* `pathPrior` returns 0.3 for changelogs/history, 0.5 for devcontainer/github/circleci/tests/static/examples/configs, and 1 for others.
-* `chunkRelevance` weights symbol-name matches as 2 and body matches as 1.
-* `rankedChunks` sorts by relevance score descending, then by index ascending.
-* `pathMatches` ignores tokens appearing in more than 10% of paths (unless the repo has fewer than 50 files).
-* `pathMatches` returns the top 20 path matches.
-* `Fusion.addList` applies the RRF formula: `weight / (RRF_K + i + 1)` where `RRF_K` is 60.
-* `Fusion.sorted` applies `pathPrior` as a final multiplier to the RRF score.
-* `rankCandidates` applies weights of 1.0 for BM25 and symbols, 0.6 for path matches, 0.5 for editor files, and 0.4 for neighbors.
-* `rankCandidates` limits neighbors to the first 15 results.
+- `pathPrior` down-weights unlikely edit targets: CHANGES/CHANGELOG/HISTORY 0.3; `.devcontainer/.github/.circleci` 0.5; config-like data (json/toml/yaml/cfg/ini) under `test(s)/` or `static/` 0.5; `examples/samples` 0.6; root dotfile configs/rc/ignore 0.5; otherwise 1.
+- `chunkRelevance` counts distinct query-token hits: body match 1, symbol-name match 2. `rankedChunks` sorts by it, ties by original order.
+- `identifiers` returns backticked tokens plus snake_case or camelCase words from the query.
+- Signals fused with RRF (`weight / (60 + rank + 1)`): BM25 top 30 (1.0), exact-name symbol matches for identifiers (1.0), path matches (0.6), editor files (active, open, recently edited; 0.5), import neighbours of the top 3 files, capped at 15 (0.4). Each file signal contributes the file's best chunk.
+- Path matching weights tokens by `ln(1 + n/df)`, ignores tokens present in more than 10% of paths (cutoff skipped when fewer than 50 files) and keeps the top 20.
+- The final score is multiplied by `pathPrior`; ties break by chunk id. Reasons from every contributing signal are kept for the item's "reason".
 
 **Notes**
-* `identifiers` uses a regex to filter words that contain an underscore or a camelCase transition.
-* `pathMatches` uses a logarithmic scoring system: `Math.log(1 + n / df.get(t)!)`.
-* `bestChunk` is a private helper that returns the first element of `rankedChunks`.
-* `Fusion` is a private class used to aggregate scores from different ranking sources.
+- Pure and deterministic for a given index and signals.

@@ -1,25 +1,22 @@
 # `src/core/context/symbols.ts`
 
 **Purpose**
-This file extracts symbols from source code files. It identifies functions, classes, modules, and headings based on file extensions.
+Regex-based symbol extraction (functions, classes, methods, modules, headings) chosen by file extension.
 
 **Exports**
-* SymbolInfo(params): SymbolInfo - type - Exports the SymbolInfo type definition.
-* extractSymbols(path: string, content: string): SymbolInfo[] - function - Extracts symbols from a file based on its extension and content.
+- `SymbolInfo` (type, from `./types`): `name`, `kind`, `path`, `line`, `endLine`, optional `container`, `signature`.
+- `extractSymbols(path, content)`: returns `SymbolInfo[]`.
 
 **Collaborators**
-* Imports: ./symbolsBrace, ./types
-* Exports: Not visible from this file.
+- Imports: `./symbolsBrace` (`extractBrace`, `isBraceLanguage`), `./types`.
+- Used by: `codeIndex.ts`.
 
 **Key behaviour and invariants**
-* The maximum symbol length is 400 lines.
-* Python symbols start at the first decorator line.
-* Markdown headings end before the next heading of the same or higher level.
-* RST headings require an underline character.
-* The function ensures `endLine` does not exceed the `line` plus the maximum length.
-* The function removes the last empty line from the content before processing.
+- Extension dispatch: `.py` Python, `.rb` Ruby, `.md` Markdown, `.rst` reStructuredText, brace languages via `symbolsBrace`; anything else returns `[]`. A trailing empty line is dropped first.
+- Python (indentation based): `def`/`async def`/`class`. Top-level `def` is `function`, a def inside a class is `method`. Functions nested in a function are skipped. A symbol starts at its first decorator line; the signature spans up to 5 lines until one ends with `:`; the body ends at the last line indented deeper, ignoring blank and comment lines.
+- Ruby: `def`, `class`, `module` with indentation ends, including the closing `end`.
+- Markdown: ATX headings, ignoring those inside code fences; a heading ends before the next heading of the same or higher level. RST: a text line followed by an underline of at least its length; level follows the order the underline characters first appear.
+- Every symbol is capped so `endLine` is between `line` and `line + 399` (`MAX_LEN` 400).
 
 **Notes**
-* Python and Ruby use indentation to determine block ends.
-* Markdown and RST use headings to determine block ends.
-* Brace languages use a separate module for symbol extraction.
+- Heuristic parsing, not a real parser; unusual formatting can be missed.

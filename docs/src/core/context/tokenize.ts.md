@@ -1,24 +1,21 @@
 # `src/core/context/tokenize.ts`
 
 **Purpose**
-This file converts a string of text into an array of tokens. It identifies meaningful words for use in indexing and querying.
+Identifier-aware tokenizer shared by indexing and query parsing.
 
 **Exports**
-* tokenize(text: string): string[] - function: It processes a string into a list of cleaned and stemmed tokens.
+- `tokenize(text)`: returns the list of lowercase, lightly stemmed tokens.
 
 **Collaborators**
-* Imports: Not visible from this file.
-* Exports to: Not visible from this file.
+- Imports: none.
+- Used by: `codeIndex.ts`, `rank.ts`, `assemble.ts`, `window.ts`.
 
 **Key behaviour and invariants**
-* The function converts all tokens to lowercase.
-* The function removes leading and trailing underscores.
-* The function removes words that are in the STOP set.
-* The function removes tokens that consist only of digits.
-* The function removes tokens with a length of 1.
-* The function performs light stemming on words ending in 's'.
-* The function splits camelCase and snake_case identifiers into separate tokens.
+- Text is split on anything outside `[A-Za-z0-9_]`.
+- A camelCase or snake_case word yields the whole word plus its parts (so `parseMentions` gives `parsementions`, `parse`, `mentions`).
+- Leading/trailing underscores are trimmed; tokens are lowercased.
+- Dropped: single characters, all-digit tokens, and stop words (e.g. `def self return import from if the const let var function true false null`).
+- Stemming: a token longer than 4 characters ending in `s` (but not `ss`) loses the `s`.
 
 **Notes**
-* The stem function does not modify words ending in 'ss'.
-* The stem function only modifies words longer than 4 characters.
+- The same function must be used for documents and queries, otherwise matching breaks.

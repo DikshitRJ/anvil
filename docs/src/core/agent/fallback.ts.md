@@ -1,28 +1,24 @@
 # `src/core/agent/fallback.ts`
 
 **Purpose**
-This file classifies errors and manages model switching logic. It provides a mechanism to retry requests with backoff or switch to a different model when a failure occurs.
+Classifies run failures and decides the next step: retry with backoff, switch model, or give up.
 
 **Exports**
-* FailureKind: 'transient' | 'model-fatal' | 'harness-down' | 'cancelled' | 'unknown' - type - Defines the categories of possible failures.
-* classifyFailure(f: { message?: string; statusCode?: number; code?: string; phase: 'connect' | 'turn' | 'stall' }): FailureKind - function - Analyzes an error object and returns a FailureKind.
-* RelayPolicy: { models: string[]; retriesPerModel: number; backoffMs: number[] } - interface - Defines the configuration for model retries and switching.
-* RelayStep: { action: 'retry'; model: string; delayMs: number } | { action: 'switch'; model: string; from: string } | { action: 'give-up'; reason: string } - type - Represents the next action to take after a failure.
-* ModelRelay: class - class - Manages the current model index and tracks retry attempts based on a RelayPolicy.
+- `FailureKind`: `transient | model-fatal | harness-down | cancelled | unknown`.
+- `classifyFailure({message, statusCode, code, phase})` with phase `connect | turn | stall`.
+- `RelayPolicy` (`models`, `retriesPerModel`, `backoffMs`) and `RelayStep` (`retry`, `switch`, `give-up`).
+- `ModelRelay`: `current()`, `onFailure(kind, message)`, `reset()`.
 
 **Collaborators**
-Imports: Not visible from this file.
-Exports: Not visible from this file.
+- Imports: none.
+- Used by: `trueforge/session.ts` and `host/runController.ts`.
 
 **Key behaviour and invariants**
-* `classifyFailure` returns 'transient' if the phase is 'stall'.
-* `classifyFailure` returns 'harness-down' if the phase is 'connect' and a network error code or message is detected.
-* `ModelRelay` throws an error if the policy contains no models.
-* `ModelRelay` uses a default backoff of [500, 1500, 4000] if no backoffMs are provided.
-* `ModelRelay.onFailure` returns 'give-up' for 'cancelled' or 'harness-down' kinds.
-* `ModelRelay.onFailure` increments the attempt counter only for 'transient' or 'unknown' kinds.
-* `ModelRelay.onFailure` resets the attempt counter to 0 when it switches to a new model.
+- Classification order: phase `stall` is always `transient`; a message matching client-cancel text is `cancelled`.
+- Phase `connect`: network code/message or a missing status code is `harness-down`; 5xx or 429 is `transient`; anything else `unknown`.
+- Phase `turn`: the fatal regex (401/403/404, auth, unknown/missing model, DNS/connection refused, certificate, invalid URL) gives `model-fatal`; the transient regex (429, rate limit, overloaded, timeout, 5xx, temporary) gives `transient`; else `unknown`. Fatal is tested before transient.
+- `ModelRelay` throws if no models are configured. Backoff defaults to 500/1500/4000 ms; the last value is reused when attempts exceed the list.
+- `onFailure`: `cancelled` and `harness-down` give up at once (never switch model). `transient` and `unknown` retry the same model while attempts < `retriesPerModel`. Otherwise it switches to the next model and resets attempts; with no next model it gives up with "All configured models failed" plus the last error. `model-fatal` skips retries and switches immediately.
 
 **Notes**
-* The `FATAL` regex includes specific HTTP status codes (401, 403, 404) and authentication-related keywords.
-* The `TRANSIENT` regex includes 429 (rate limit), 5xx (server errors), and timeout keywords.
+- `reset()` returns to the first model with zero attempts, for a new run.
