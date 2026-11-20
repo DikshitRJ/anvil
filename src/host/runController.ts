@@ -50,6 +50,7 @@ export class RunController implements WriteGate {
   private session: AnvilSession | undefined;
   private active: ActiveRun | undefined;
   private readonly recent: string[] = [];
+  private inFlight = 0;
 
   constructor(private readonly d: RunDeps) {
     this.fileStore = new VsCodeFileStore(d.root);
@@ -63,12 +64,25 @@ export class RunController implements WriteGate {
   }
 
   // ---- WriteGate ----
-  isRunActive = (): boolean => !!this.active;
-  resolveWrite: WriteGate['resolveWrite'] = (t, a, c, p) => this.flow.gate.resolveWrite(t, a, c, p);
-  authorizeCommand: WriteGate['authorizeCommand'] = (a) => this.flow.gate.authorizeCommand(a);
+  isRunActive = (): boolean => !!this.active && !this.active.cancelled;
+  resolveWrite: WriteGate['resolveWrite'] = (t, a, c, p) => this.busy(() => this.flow.gate.resolveWrite(t, a, c, p));
+  authorizeCommand: WriteGate['authorizeCommand'] = (a) => this.busy(() => this.flow.gate.authorizeCommand(a));
+
+  /** True while a bridge write review or command is in flight (the stall watchdog must not fire then). */
+  isBusy = (): boolean => this.inFlight > 0;
+
+  private async busy<T>(fn: () => Promise<T>): Promise<T> {
+    this.inFlight++;
+    try {
+      return await fn();
+    } finally {
+      this.inFlight--;
+    }
+  }
 
   // ---- writes ----
   async applyWrite(rel: string, content: string, summary: string): Promise<void> {
+    if (!this.isRunActive()) throw new Error('Run is not active; write refused.');
     await this.writeAndRecord(this.active?.runId ?? 'manual', rel, content, summary);
   }
 
@@ -84,8 +98,9 @@ export class RunController implements WriteGate {
   }
 
   async runCommand(command: string, opts: { cwd?: string; timeoutMs: number }) {
+    if (!this.isRunActive()) throw new Error('Run is not active; command refused.');
     const cwd = resolveInWorkspace(this.d.root, opts.cwd ?? '.');
-    return this.d.commands.run(command, { cwd, timeoutMs: opts.timeoutMs });
+    return this.busy(() => this.d.commands.run(command, { cwd, timeoutMs: opts.timeoutMs }));
   }
 
   // ---- panel messages ----
@@ -97,7 +112,7 @@ export class RunController implements WriteGate {
         this.postChanges();
         break;
       case 'send':
-        void this.startRun(msg.text);
+        void this.startRun(msg.text).catch(this.logErr('startRun'));
         break;
       case 'cancel':
         this.cancel();
@@ -112,16 +127,16 @@ export class RunController implements WriteGate {
         this.postMentions(msg.query);
         break;
       case 'openFile':
-        void this.openFile(msg.path, msg.line);
+        void this.openFile(msg.path, msg.line).catch(this.logErr('openFile'));
         break;
       case 'openSession':
-        void vscode.commands.executeCommand('anvil.openSession');
+        this.fire(vscode.commands.executeCommand('anvil.openSession'));
         break;
       case 'undoChange':
-        void this.undo(msg.seq);
+        void this.undo(msg.seq).catch(this.logErr('undo'));
         break;
       case 'revertRun':
-        void this.revertRun(msg.runId);
+        void this.revertRun(msg.runId).catch(this.logErr('revertRun'));
         break;
       case 'doctor':
         this.d.runDoctor();
@@ -132,9 +147,18 @@ export class RunController implements WriteGate {
     }
   }
 
+  private fire(p: PromiseLike<unknown>): void {
+    Promise.resolve(p).catch(this.logErr('vscode'));
+  }
+
+  private logErr(what: string): (e: unknown) => void {
+    return (e) => this.d.log(`${what}: ${String(e)}`);
+  }
+
   private noticeAction(action: string): void {
-    if (/settings/i.test(action)) void vscode.commands.executeCommand('workbench.action.openSettings', 'anvil.models');
-    else if (/setup/i.test(action)) void vscode.commands.executeCommand('anvil.setup');
+    if (/settings/i.test(action))
+      this.fire(vscode.commands.executeCommand('workbench.action.openSettings', 'anvil.models'));
+    else if (/setup/i.test(action)) this.fire(vscode.commands.executeCommand('anvil.setup'));
     else if (/doctor/i.test(action)) this.d.runDoctor();
   }
 
@@ -146,7 +170,8 @@ export class RunController implements WriteGate {
 
   private async openFile(rel: string, line?: number): Promise<void> {
     try {
-      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(`${this.d.root}/${rel}`));
+      const abs = resolveInWorkspace(this.d.root, rel);
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
       const at = new vscode.Position(Math.max(0, (line ?? 1) - 1), 0);
       await vscode.window.showTextDocument(doc, { selection: new vscode.Range(at, at) });
     } catch (e) {
@@ -180,21 +205,22 @@ export class RunController implements WriteGate {
       return this.notice('error', 'No models configured. Set anvil.models.', ['Open Settings']);
     const runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     this.active = { runId, cancelled: false };
-    void vscode.commands.executeCommand('setContext', 'anvil.running', true);
+    this.fire(vscode.commands.executeCommand('setContext', 'anvil.running', true));
     this.d.statusBar.setRunning(true);
     try {
       await this.execute(runId, text, cfg);
     } finally {
       this.active = undefined;
-      void vscode.commands.executeCommand('setContext', 'anvil.running', false);
+      this.flow.clear();
+      this.fire(vscode.commands.executeCommand('setContext', 'anvil.running', false));
       this.d.statusBar.setRunning(false);
     }
   }
 
   private async execute(runId: string, text: string, cfg: AnvilConfig): Promise<void> {
-    const input = this.buildInput(runId, text, cfg);
     let result: RunResult;
     try {
+      const input = this.buildInput(runId, text, cfg);
       this.session ??= this.newSession(this.d.getAgents().coder, cfg, text.slice(0, 60));
       result = await this.session.run(input, this.hooks(runId));
     } catch (e) {
@@ -217,6 +243,8 @@ export class RunController implements WriteGate {
       agent,
       relay: new ModelRelay({ models: cfg.models, retriesPerModel: cfg.retriesPerModel, backoffMs: [500, 1500, 4000] }),
       stallTimeoutMs: cfg.stallTimeoutSec * 1000,
+      baseUrl: cfg.trueforgeUrl,
+      isBusy: this.isBusy,
       title,
     });
   }
@@ -283,7 +311,7 @@ export class RunController implements WriteGate {
       onModelSwitch: (from, to, reason) => {
         this.d.post({ type: 'modelSwitch', runId, from, to, reason });
         this.d.statusBar.setModel(to);
-        void vscode.window.showWarningMessage(`Anvil switched model ${from} → ${to}: ${reason}`);
+        this.fire(vscode.window.showWarningMessage(`Anvil switched model ${from} → ${to}: ${reason}`));
       },
       onRetry: (model, attempt, delayMs, reason) =>
         this.notice(
@@ -293,6 +321,10 @@ export class RunController implements WriteGate {
           runId,
         ),
       beforeRetry: async () => {
+        this.d.review.cancelAll('Run retrying');
+        this.d.commands.killAll();
+        this.flow.rejectAllPending();
+        this.flow.clear();
         await this.checkpoints.revertRun(runId);
       },
       onQuestion: async (question, options) => {
@@ -309,6 +341,7 @@ export class RunController implements WriteGate {
     this.d.review.cancelAll('Run cancelled');
     this.d.commands.killAll();
     this.flow.rejectAllPending();
+    this.flow.clear();
     return true;
   }
 

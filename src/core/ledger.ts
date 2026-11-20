@@ -51,3 +51,8 @@ export class ApprovalLedger {
     return this.entries.size;
   }
 }
+
+/** Approval keys are scoped by run so a stale approval can never satisfy a later run's identical call. */
+export function scopedKey(runId: string | undefined, tool: string, input: Record<string, unknown>): string {
+  return `${runId ?? ''}|${canonicalKey(tool, input)}`;
+}

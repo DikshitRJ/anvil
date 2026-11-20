@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApprovalLedger, canonicalKey, stableStringify } from '../../src/core/ledger';
+import { ApprovalLedger, canonicalKey, scopedKey, stableStringify } from '../../src/core/ledger';
 
 const entry = { finalContent: 'x', acceptedHunks: [0], totalHunks: 1, feedback: '' };
 
@@ -46,5 +46,13 @@ describe('ApprovalLedger', () => {
     l.put('a', entry);
     l.clear();
     expect(l.size()).toBe(0);
+  });
+});
+
+describe('scopedKey', () => {
+  it('differs across runs and is stable within one', () => {
+    expect(scopedKey('r1', 't', { a: 1, b: 2 })).toBe(scopedKey('r1', 't', { b: 2, a: 1 }));
+    expect(scopedKey('r1', 't', {})).not.toBe(scopedKey('r2', 't', {}));
+    expect(scopedKey(undefined, 't', {})).toBe(`|${canonicalKey('t', {})}`);
   });
 });
