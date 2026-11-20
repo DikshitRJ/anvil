@@ -192,6 +192,9 @@ Dependency rule: `core` ← `trueforge`, `mcp` ← `host`, `panel` ← `extensio
 // ---------- core/diff/hunks.ts ----------
 export interface Hunk { id: number; origStart: number; origLines: string[]; newStart: number; newLines: string[] }
 // origStart/newStart: 0-based line indices. Hunks contain only changed lines (no context lines).
+// Line endings: untouched/rejected lines keep their own terminators; inserted lines use the original's dominant EOL.
+// A trailing-newline or dominant-EOL change alone is one hunk over the last line (`eofOnly: true`). With zero hunks
+// the review reports "No visible changes." and applies `proposed` only if it differs from the original (never "rejected").
 export type HunkDecision = 'pending' | 'accepted' | 'rejected';
 export function splitLines(text: string): { lines: string[]; eol: '\n' | '\r\n'; trailingNewline: boolean };
 export function computeHunks(original: string, proposed: string): Hunk[];
