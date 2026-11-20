@@ -79,10 +79,12 @@ npm run build
 2. Start TrueForge in local mode in a separate terminal, and leave it running.
 
 ```bash
-OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' npx @truefoundry/trueforge@latest
+HOST=localhost OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' npx @truefoundry/trueforge@latest
 ```
 
 TrueForge serves its API and its chat UI at http://localhost:8790. Local mode uses SQLite and needs no login.
+
+> **Why `HOST=localhost`?** zsh exports `HOST` (your machine's hostname) into the environment, and TrueForge reads `HOST` as its bind address. Without an explicit value it can bind to a name Anvil cannot reach. Setting `HOST=localhost` avoids that.
 
 > **Why the allowlist?** TrueForge's network policy blocks loopback URLs by default (`Outbound URL blocked for host 127.0.0.1`). Anvil's MCP bridge listens on `127.0.0.1:7801`, and local model servers such as Ollama listen on `localhost`, so TrueForge must be allowed to reach them. The real-TrueForge e2e suite starts TrueForge exactly this way.
 
@@ -195,7 +197,7 @@ How to read it:
 1. Select code. With no selection, Anvil targets the function or class around the cursor.
 2. Press `Ctrl+Alt+E` (`Cmd+Alt+E` on macOS), or choose **Anvil: Inline Edit Selection** from the editor context menu.
 3. Type the instruction. A diff opens against the file and updates as tokens arrive.
-4. Review the hunks. A CodeLens above each hunk offers **Accept** and **Reject**. **Accept all** and **Reject all** sit at the top. Click a decided hunk's CodeLens to change that decision. Closing the diff tab rejects any undecided hunks.
+4. Review the hunks. A CodeLens above each hunk offers **Accept** and **Reject** (Anvil enables `diffEditor.codeLens` by default so the lenses show in the diff editor). The diff's title bar has check and cross buttons for the hunk at the cursor, plus **Accept all** and **Reject all**. While reviewing, `Alt+Y` accepts and `Alt+N` rejects the hunk at the cursor. Click a decided hunk's CodeLens to change that decision. Closing the diff tab rejects any undecided hunks.
 5. The accepted hunks are written to the file and recorded in the timeline. Native undo also works for the open document.
 
 ### Agent mode
@@ -215,6 +217,17 @@ Press **Stop** in the panel, press `Esc` while a run is active, or run **Anvil: 
 - The panel's timeline lists applied changes. **Undo change** reverts one change. **Revert run** reverts every change from one run, using the earliest saved contents for each file.
 - **Anvil: Undo Last Applied Change** undoes the most recent change.
 - If a file changed after Anvil wrote it, Anvil asks before restoring it: "File changed since — restore anyway?".
+
+### Using a local model (Ollama)
+
+Ollama defaults to a small context window (often 4096 tokens), and it silently drops the start of a longer prompt. Anvil warns when the model reports far fewer input tokens than Anvil sent. To fix it, give the model a bigger window with a Modelfile:
+
+```
+FROM qwen2.5-coder:14b
+PARAMETER num_ctx 16384
+```
+
+Run `ollama create qwen2.5-coder-16k -f Modelfile` and point TrueForge at the new model, or set `OLLAMA_CONTEXT_LENGTH=16384` before starting Ollama. Keep `anvil.contextBudget` well below the window, because the system prompt, tool schemas and history share it. For a 4096-token window, use a budget of about 2000.
 
 ### Switching models
 

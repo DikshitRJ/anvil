@@ -17,6 +17,8 @@ export interface InlineEditDeps {
   createSession(): AnvilSession;
   applyAccepted(path: string, before: string, after: string, summary: string): Promise<void>;
   log(msg: string): void;
+  /** Notified when the model relay falls back (status bar, panel). */
+  onModelSwitch?(from: string, to: string, reason: string): void;
 }
 
 let activeCancel: (() => void) | undefined;
@@ -91,7 +93,8 @@ function hooks(j: Job, live: LiveReview) {
       if (last) live.update(stitch(j, extractPartialReplacement(last.content)));
     },
     onApproval: async () => ({ allow: false as const, reason: 'Inline edit has no tools.' }),
-    onModelSwitch: (from: string, to: string): void => {
+    onModelSwitch: (from: string, to: string, reason: string): void => {
+      j.deps.onModelSwitch?.(from, to, reason);
       void vscode.window.showWarningMessage(`Anvil: ${from} failed — falling back to ${to}`);
     },
     onRetry: (model: string, attempt: number, delayMs: number, reason: string): void =>

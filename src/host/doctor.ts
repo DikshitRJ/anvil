@@ -38,6 +38,9 @@ async function guard(name: string, fn: () => Promise<Omit<Check, 'name'>>): Prom
   }
 }
 
+export const TRUEFORGE_DOWN_FIX =
+  'Start TrueForge with HOST=localhost OUTBOUND_URL_ALLOWED_HOSTS=\'["127.0.0.1","localhost"]\' npx @truefoundry/trueforge@latest (zsh exports HOST as the bind address, so set it explicitly), or fix anvil.trueforgeUrl.';
+
 async function checkTrueForge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
   const ok = await checkHealth(d.cfg.trueforgeUrl);
   return ok
@@ -45,7 +48,7 @@ async function checkTrueForge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
     : {
         ok,
         detail: `no response from ${d.cfg.trueforgeUrl}`,
-        fix: 'Start TrueForge (npm run setup:trueforge) or fix anvil.trueforgeUrl.',
+        fix: TRUEFORGE_DOWN_FIX,
       };
 }
 

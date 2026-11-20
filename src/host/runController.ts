@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import type { TrueForge } from '@truefoundry/trueforge-sdk';
 import { ModelRelay } from '../core/agent/fallback';
-import { assembleContext, renderContextPack } from '../core/context/assemble';
+import { assembleContext, estimateTokens, renderContextPack } from '../core/context/assemble';
 import type { CodeIndex } from '../core/context/codeIndex';
 import { parseMentions } from '../core/context/mentions';
 import type { ContextSignals } from '../core/context/types';
@@ -17,7 +17,7 @@ import type { AgentDefinition } from '../trueforge/spec';
 import { ApprovalFlow } from './approvalFlow';
 import type { CommandRunner } from './commandRunner';
 import { VsCodeFileStore } from './fileStore';
-import { diffTurn, emptySnapshot, matchMentions } from './panelEvents';
+import { checkTruncation, diffTurn, emptySnapshot, matchMentions, type TruncationState } from './panelEvents';
 import type { ReviewController } from './reviewController';
 import type { AnvilStatusBar } from './statusBar';
 
@@ -225,7 +225,7 @@ export class RunController implements WriteGate {
     try {
       const input = this.buildInput(runId, text, cfg);
       this.session ??= this.newSession(this.d.getAgents().coder, cfg, text.slice(0, 60));
-      result = await this.session.run(input, this.hooks(runId));
+      result = await this.session.run(input, this.hooks(runId, { sentTokens: estimateTokens(input), done: false }));
     } catch (e) {
       result = { status: 'error', model: cfg.models[0] ?? '', error: e instanceof Error ? e.message : String(e) };
     }
@@ -309,10 +309,14 @@ export class RunController implements WriteGate {
     };
   }
 
-  private hooks(runId: string): RunHooks {
+  private hooks(runId: string, trunc: TruncationState): RunHooks {
     const snap = emptySnapshot();
     return {
-      onEvent: (_e, view) => diffTurn(runId, snap, view).forEach((m) => this.d.post(m)),
+      onEvent: (e, view) => {
+        diffTurn(runId, snap, view).forEach((m) => this.d.post(m));
+        const warning = checkTruncation(trunc, e);
+        if (warning) this.notice('warn', warning, undefined, runId);
+      },
       onApproval: ({ call }) => this.flow.onApproval(call),
       onModelSwitch: (from, to, reason) => {
         this.d.post({ type: 'modelSwitch', runId, from, to, reason });

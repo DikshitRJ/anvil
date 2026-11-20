@@ -25,7 +25,12 @@ export class VsCodeWorkspaceHost implements WorkspaceHost {
     readonly root: string,
     private readonly getIndex: () => CodeIndex,
     private readonly delegates: HostDelegates,
+    private readonly getCommandTimeoutSec: () => number = () => 120,
   ) {}
+
+  get defaultCommandTimeoutSec(): number {
+    return this.getCommandTimeoutSec();
+  }
 
   get index(): CodeIndex {
     return this.getIndex();

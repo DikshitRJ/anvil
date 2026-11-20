@@ -166,10 +166,15 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     runDoctor: () => void doctor(),
     log,
   });
-  const host: VsCodeWorkspaceHost = new VsCodeWorkspaceHost(root, () => indexSvc.index, {
-    applyWrite: (rel, content, summary) => run.applyWrite(rel, content, summary),
-    runCommand: (c, o) => run.runCommand(c, o),
-  });
+  const host: VsCodeWorkspaceHost = new VsCodeWorkspaceHost(
+    root,
+    () => indexSvc.index,
+    {
+      applyWrite: (rel, content, summary) => run.applyWrite(rel, content, summary),
+      runCommand: (c, o) => run.runCommand(c, o),
+    },
+    () => cfg.commandTimeoutSec,
+  );
 
   const setup = async (): Promise<void> => {
     // An 'elsewhere' window must not re-register: it would overwrite the URL set by the owning window.
@@ -254,6 +259,10 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     createSession: () => inlineSession(run, defs.inline, cfg),
     applyAccepted: (p, b, a, s) => run.applyStandalone(p, b, a, s),
     log,
+    onModelSwitch: (from, to, reason) => {
+      statusBar.setModel(to);
+      panel.post({ type: 'modelSwitch', runId: 'inline', from, to, reason });
+    },
   });
   registerCommands(context, { run, setup, doctor, panel, cfg: () => cfg });
   indexSvc.start();

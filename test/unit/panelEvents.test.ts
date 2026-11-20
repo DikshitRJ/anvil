@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TurnView } from '../../src/core/agent/events';
 import { CappedOutput } from '../../src/host/cappedOutput';
 import {
+  checkTruncation,
   diffTurn,
   emptySnapshot,
   fileScore,
@@ -106,5 +107,27 @@ describe('misc helpers', () => {
     expect(s.endsWith('TAILEND')).toBe(true);
     expect(s).toContain('truncated');
     expect(s.length).toBeLessThan(66 * 1024);
+  });
+});
+
+describe('checkTruncation', () => {
+  const ev = (inputTokens: number) => ({ type: 'model.message', usage: { inputTokens, outputTokens: 1 } });
+  it('warns once when the model saw under half of the prompt', () => {
+    const st = { sentTokens: 10000, done: false };
+    const w = checkTruncation(st, ev(2000));
+    expect(w).toContain('only received 2000 of ~10000');
+    expect(w).toContain('num_ctx');
+    expect(checkTruncation(st, ev(100))).toBeUndefined();
+  });
+  it('stays quiet when usage is adequate, and only judges the first call', () => {
+    const st = { sentTokens: 10000, done: false };
+    expect(checkTruncation(st, ev(6000))).toBeUndefined();
+    expect(checkTruncation(st, ev(10))).toBeUndefined();
+  });
+  it('ignores other events, missing usage and snake_case usage', () => {
+    const st = { sentTokens: 1000, done: false };
+    expect(checkTruncation(st, { type: 'model.message.delta' })).toBeUndefined();
+    expect(checkTruncation(st, { type: 'model.message' })).toBeUndefined();
+    expect(checkTruncation(st, { type: 'model.message', usage: { input_tokens: 10 } })).toContain('only received 10');
   });
 });

@@ -17,6 +17,8 @@ export interface DiagnosticInfo {
 export interface WorkspaceHost {
   readonly root: string;
   readonly index: CodeIndex;
+  /** Configured anvil.commandTimeoutSec; run_command's default when the agent passes no timeout_sec (cap 600). */
+  readonly defaultCommandTimeoutSec?: number;
   readFile(rel: string): Promise<string | null>;
   listFiles(dir?: string, glob?: string, limit?: number): Promise<string[]>;
   diagnostics(rel?: string): Promise<DiagnosticInfo[]>;

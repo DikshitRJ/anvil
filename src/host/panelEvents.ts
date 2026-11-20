@@ -171,3 +171,24 @@ export function reviewOutcome(accepted: number, total: number, applied: boolean)
   if (!applied) return 'rejected';
   return accepted === total ? `accepted all ${total} hunk(s)` : `accepted ${accepted}/${total} hunks`;
 }
+
+/** Per-run state for the truncated-context check (only the first model call is compared with the sent prompt). */
+export interface TruncationState {
+  sentTokens: number;
+  done: boolean;
+}
+
+/**
+ * Compares the input tokens the model reported for the first model call with Anvil's estimate of the prompt it sent.
+ * Returns a warning once per run when the model saw under half of it (a smaller context window than configured).
+ */
+export function checkTruncation(state: TruncationState, event: unknown): string | undefined {
+  if (state.done || state.sentTokens <= 0) return undefined;
+  const e = event as { type?: unknown; usage?: { inputTokens?: unknown; input_tokens?: unknown } } | null;
+  if (e?.type !== 'model.message' || !e.usage) return undefined;
+  const n = e.usage.inputTokens ?? e.usage.input_tokens;
+  if (typeof n !== 'number') return undefined;
+  state.done = true;
+  if (n >= state.sentTokens * 0.5) return undefined;
+  return `The model only received ${n} of ~${state.sentTokens} tokens — its context window is smaller than configured. Ollama: raise num_ctx (Modelfile \`PARAMETER num_ctx 16384\`) or set OLLAMA_CONTEXT_LENGTH; or lower anvil.contextBudget.`;
+}

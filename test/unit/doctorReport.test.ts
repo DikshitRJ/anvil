@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatReport, OUTBOUND_HINT } from '../../src/host/doctor';
+import { formatReport, OUTBOUND_HINT, TRUEFORGE_DOWN_FIX } from '../../src/host/doctor';
 
 describe('formatReport', () => {
   it('marks pass, warn and fail distinctly', () => {
@@ -16,5 +16,10 @@ describe('formatReport', () => {
   it('includes the loopback allowlist hint in the fix text', () => {
     const out = formatReport([{ name: 'm', ok: false, detail: 'bad', fix: `Run setup. ${OUTBOUND_HINT}` }]);
     expect(out).toContain('OUTBOUND_URL_ALLOWED_HOSTS=\'["127.0.0.1","localhost"]\'');
+  });
+
+  it('tells the user to start TrueForge with HOST=localhost', () => {
+    expect(TRUEFORGE_DOWN_FIX).toContain('HOST=localhost');
+    expect(TRUEFORGE_DOWN_FIX).toContain('OUTBOUND_URL_ALLOWED_HOSTS');
   });
 });
