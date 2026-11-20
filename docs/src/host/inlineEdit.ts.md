@@ -1,24 +1,34 @@
 # `src/host/inlineEdit.ts`
 
 **Purpose**
-This file manages the inline edit workflow for the Anvil tool. It converts a user selection into a live whole-file diff and performs a per-hunk review.
+This file implements the `anvil.inlineEdit` command. It streams a rewrite of a user's selection into a live whole-file diff and provides a per-hunk review process.
 
 **Exports**
-* cancelActiveInlineEdit(): boolean - function and returns a boolean. It cancels the current inline edit operation.
-* registerInlineEdit(context: vscode.ExtensionContext, deps: InlineEditDeps): void - function and returns void. It registers the `anvil.inlineEdit` command in the VS Code extension context.
+* `cancelActiveInlineEdit()` (function): Returns a boolean indicating if an active inline edit was successfully cancelled.
+* `registerInlineEdit(context: vscode.ExtensionContext, deps: InlineEditDeps)` (function): Registers the `anvil.inlineEdit` command within the VS Code extension context.
 
 **Collaborators**
-* Imports: `vscode`, `../core/inline/prompt`, `../core/context/codeIndex`, `../trueforge/session`, `./reviewController`.
-* Exports: Not visible from this file.
+* Imports:
+    * `vscode`: Provides editor, window, and command APIs.
+    * `../core/inline/prompt`: Provides `buildInlinePrompt`, `extractPartialReplacement`, `extractReplacement`, and `matchIndentation`.
+    * `../core/context/codeIndex`: Provides the `CodeIndex` type.
+    * `../trueforge/session`: Provides the `AnvilSession` type.
+    * `./reviewController`: Provides `LiveReview` and `ReviewController` types.
+    * `./reviewModel`: Provides the `relativeInside` function.
+* Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* The file uses a character budget of 8000 for context building.
-* It only processes files with the `file` URI scheme.
-* It cancels the session and live review if the user requests a cancellation.
-* It prevents applying the edit if the file version changes during generation.
-* It shows a warning message if the model switch fails.
-* It shows an error message and offers to open the "Doctor" tool on failure.
+* `CONTEXT_CHAR_BUDGET` limits the context size to 8000 characters (approximately 2000 tokens).
+* `lineSelection` calculates a `vscode.Range` based on the current selection; if the selection is empty, it identifies the symbol at the cursor.
+* `buildContext` gathers symbol bodies from the `CodeIndex` based on identifiers found in the selection, limited by `CONTEXT_CHAR_BUDGET`.
+* `runJob` manages the lifecycle of an inline edit, including session creation, live review opening, and progress reporting.
+* `finishEdit` verifies that the file version has not changed (`j.doc.version !== j.version`) before applying the accepted edit.
+* `inlineEdit` prevents concurrent executions by checking the `activeCancel` state.
+* `workspaceRelative` ensures the file is inside the first workspace folder.
 
 **Notes**
-* The `lineSelection` function handles empty selections by finding the nearest symbol.
-* The `buildContext` function filters out module symbols.
+* `cancelActiveInlineEdit` is triggered by the host's `anvil.cancel` handler.
+* `reportError` displays an error message and offers to open the "Doctor" command.
+* `askInstruction` claims the `activeCancel` slot while the input box is open.
+* `finishEdit` logs a warning and aborts if the file version changes during generation.
+* `runJob` catches errors during session creation and reports them via `reportError`.
