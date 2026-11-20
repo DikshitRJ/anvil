@@ -110,3 +110,12 @@ export class ReviewModel {
     return best?.id;
   }
 }
+
+// workspace-relative POSIX path when `file` is inside `root`, else undefined
+export function relativeInside(root: string, file: string): string | undefined {
+  const norm = (p: string): string => p.replace(/\\/g, '/').replace(/\/+$/, '');
+  const r = norm(root);
+  const f = norm(file);
+  if (!f.startsWith(r + '/') || f.length === r.length + 1) return undefined;
+  return f.slice(r.length + 1);
+}

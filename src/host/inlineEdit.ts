@@ -9,6 +9,7 @@ import {
 import type { CodeIndex } from '../core/context/codeIndex';
 import type { AnvilSession } from '../trueforge/session';
 import type { LiveReview, ReviewController } from './reviewController';
+import { relativeInside } from './reviewModel';
 
 export interface InlineEditDeps {
   review: ReviewController;
@@ -100,7 +101,7 @@ function hooks(j: Job, live: LiveReview) {
 
 async function finishEdit(j: Job, live: LiveReview, output: string): Promise<void> {
   const r = await live.finish(stitch(j, extractReplacement(output)));
-  if (!r.content) return;
+  if (r.content === null) return;
   if (j.doc.version !== j.version) {
     void vscode.window.showWarningMessage('Anvil: the file changed during generation; edit not applied.');
     return;
@@ -109,14 +110,29 @@ async function finishEdit(j: Job, live: LiveReview, output: string): Promise<voi
   void vscode.window.showInformationMessage(`Anvil: applied ${r.accepted} of ${r.total} hunks`);
 }
 
+async function reportError(e: unknown): Promise<void> {
+  const pick = await vscode.window.showErrorMessage(
+    `Anvil: ${e instanceof Error ? e.message : String(e)}`,
+    'Open Doctor',
+  );
+  if (pick === 'Open Doctor') await vscode.commands.executeCommand('anvil.doctor');
+}
+
 async function runJob(j: Job): Promise<void> {
+  let session: AnvilSession;
+  try {
+    session = j.deps.createSession(); // may throw (no models configured): create before opening the review
+  } catch (e) {
+    activeCancel = undefined;
+    await reportError(e);
+    return;
+  }
   const live = j.deps.review.openLive({
     path: j.rel,
     original: j.original,
     source: 'inline',
     title: `${j.rel} ↔ Anvil inline edit`,
   });
-  const session = j.deps.createSession();
   let cancelled = false;
   const cancel = (): void => {
     cancelled = true;
@@ -153,11 +169,7 @@ async function runJob(j: Job): Promise<void> {
   } catch (e) {
     live.cancel();
     if (cancelled) return;
-    const pick = await vscode.window.showErrorMessage(
-      `Anvil: ${e instanceof Error ? e.message : String(e)}`,
-      'Open Doctor',
-    );
-    if (pick === 'Open Doctor') await vscode.commands.executeCommand('anvil.doctor');
+    await reportError(e);
   } finally {
     activeCancel = undefined;
     void vscode.commands.executeCommand('setContext', 'anvil.running', false);
@@ -165,17 +177,42 @@ async function runJob(j: Job): Promise<void> {
   }
 }
 
+function workspaceRelative(doc: vscode.TextDocument): string | undefined {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  return root ? relativeInside(root, doc.uri.fsPath) : undefined;
+}
+
+async function askInstruction(): Promise<string | undefined> {
+  activeCancel = () => undefined; // claim the slot while the prompt is open
+  try {
+    const v = await vscode.window.showInputBox({
+      prompt: 'Anvil: describe the change',
+      placeHolder: 'e.g. add error handling',
+      ignoreFocusOut: true,
+    });
+    if (!v) activeCancel = undefined;
+    return v;
+  } catch (e) {
+    activeCancel = undefined;
+    throw e;
+  }
+}
+
 async function inlineEdit(deps: InlineEditDeps): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.uri.scheme !== 'file') return;
+  if (activeCancel) {
+    void vscode.window.showWarningMessage('Anvil: An inline edit is already running — press Esc to cancel it');
+    return;
+  }
   const doc = editor.document;
-  const rel = vscode.workspace.asRelativePath(doc.uri, false);
+  const rel = workspaceRelative(doc);
+  if (!rel) {
+    void vscode.window.showWarningMessage('Anvil: Inline edit works on files inside the open folder');
+    return;
+  }
   const range = lineSelection(editor, deps.getIndex(), rel);
-  const instruction = await vscode.window.showInputBox({
-    prompt: 'Anvil: describe the change',
-    placeHolder: 'e.g. add error handling',
-    ignoreFocusOut: true,
-  });
+  const instruction = await askInstruction();
   if (!instruction) return;
   const original = doc.getText();
   const start = doc.offsetAt(range.start);

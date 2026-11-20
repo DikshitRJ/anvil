@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ReviewModel } from '../../src/host/reviewModel';
+import { ReviewModel, relativeInside } from '../../src/host/reviewModel';
 
 const orig = 'a\nb\nc\nd\ne\nf\ng\n';
 const prop = 'a\nB1\nB2\nc\nd\ne\ng\n'; // hunk0: b -> B1,B2 (+1 line); hunk1: delete f
@@ -68,5 +68,17 @@ describe('ReviewModel', () => {
     expect(m.hunkAtLine(0)).toBe(0);
     expect(m.hunkAtLine(4)).toBe(0);
     expect(m.hunkAtLine(5)).toBe(1);
+  });
+});
+
+describe('relativeInside', () => {
+  it('returns the relative path for files inside the root', () => {
+    expect(relativeInside('/w/p', '/w/p/src/a.ts')).toBe('src/a.ts');
+    expect(relativeInside('/w/p/', '/w/p/a.ts')).toBe('a.ts');
+  });
+  it('rejects files outside the root or sibling prefixes', () => {
+    expect(relativeInside('/w/p', '/w/other/a.ts')).toBeUndefined();
+    expect(relativeInside('/w/p', '/w/p2/a.ts')).toBeUndefined();
+    expect(relativeInside('/w/p', '/w/p')).toBeUndefined();
   });
 });
