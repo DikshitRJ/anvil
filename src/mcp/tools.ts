@@ -11,8 +11,8 @@ type Result = { isError?: true; content: { type: 'text'; text: string }[] };
 const ok = (text: string): Result => ({ content: [{ type: 'text', text }] });
 const fail = (text: string): Result => ({ isError: true, content: [{ type: 'text', text }] });
 
-const READ_CAP = 24 * 1024;
-const DEFAULT_WINDOW = 400;
+const READ_CAP = 16 * 1024;
+const DEFAULT_WINDOW = 250;
 const CMD_CAP = 16 * 1024;
 
 // validates a workspace path and returns its relative POSIX form

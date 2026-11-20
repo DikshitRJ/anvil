@@ -123,8 +123,8 @@ describe('read tools', () => {
   it('read_file window and truncation note', async () => {
     host.files.set('big.txt', Array.from({ length: 500 }, (_, i) => `l${i + 1}`).join('\n'));
     const r = await call('read_file', { path: 'big.txt' });
-    expect(r.text).toContain('(lines 1-400 of 500)');
-    expect(r.text).toContain('… truncated (500 lines total); call read_file with start_line=401 to continue');
+    expect(r.text).toContain('(lines 1-250 of 500)');
+    expect(r.text).toContain('… truncated (500 lines total); call read_file with start_line=251 to continue');
     const w = await call('read_file', { path: 'big.txt', start_line: 10, end_line: 11 });
     expect(w.text).toBe('big.txt (lines 10-11 of 500)\n   10| l10\n   11| l11');
   });
