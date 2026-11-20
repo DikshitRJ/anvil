@@ -226,3 +226,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-031 — Include explicit TypeScript module extensions
 **Context.** `.mts` and `.cts` files were indexed as text but omitted from the import graph.
 **Decision.** Handle both extensions alongside existing JavaScript-family files, including their emitted module extensions.
+
+## D-032 — Preserve class-level code between methods
+**Context.** Large-class splitting skipped declarations located between methods.
+**Decision.** Apply the existing significant-gap rule between every pair of method chunks, retaining nonoverlapping source ranges.

@@ -19,3 +19,5 @@ Splits a file into retrieval chunks aligned with symbol boundaries.
 
 **Notes**
 - Line numbers are 1-based and inclusive.
+
+- Large-class splitting includes significant gaps between methods, not just the class header and tail. Gap chunks retain the class symbol.

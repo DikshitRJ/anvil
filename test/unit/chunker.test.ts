@@ -56,3 +56,25 @@ describe('chunkFile', () => {
     expect(chunks('e.py', '')).toEqual([]);
   });
 });
+
+describe('large class inter-method content', () => {
+  it('retains significant class-level statements between methods', () => {
+    const lines = Array.from({ length: 130 }, () => '');
+    lines[0] = 'class Big:';
+    lines[1] = '    doc = 1';
+    lines[2] = '    setting = 2';
+    lines[3] = '    def first(self):';
+    lines[4] = '        return 1';
+    lines[5] = '    alpha = 1';
+    lines[6] = '    beta = 2';
+    lines[7] = '    gamma = 3';
+    lines[128] = '    def last(self):';
+    lines[129] = '        return 2';
+    const result = chunks('big.py', lines.join('\n'));
+    expect(result.some((c) => c.text.includes('alpha = 1') && c.text.includes('gamma = 3'))).toBe(true);
+    expect(result.filter((c) => c.symbol === 'Big.first')).toHaveLength(1);
+    expect(result.filter((c) => c.symbol === 'Big.last')).toHaveLength(1);
+    const ordered = [...result].sort((a, b) => a.startLine - b.startLine);
+    for (let i = 1; i < ordered.length; i++) expect(ordered[i]!.startLine).toBeGreaterThan(ordered[i - 1]!.endLine);
+  });
+});

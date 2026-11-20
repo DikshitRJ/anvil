@@ -46,7 +46,12 @@ function qualified(s: SymbolInfo): string {
 
 function bigClass(path: string, lines: Lines, cls: SymbolInfo, methods: SymbolInfo[]): Chunk[] {
   const out = gap(path, lines, cls.line, methods[0]!.line - 1, cls.name);
-  for (const m of methods) out.push(...range(path, lines, m.line, m.endLine, qualified(m)));
+  let cursor = methods[0]!.line;
+  for (const m of methods) {
+    out.push(...gap(path, lines, cursor, m.line - 1, cls.name));
+    out.push(...range(path, lines, m.line, m.endLine, qualified(m)));
+    cursor = m.endLine + 1;
+  }
   const last = methods[methods.length - 1]!;
   return out.concat(gap(path, lines, last.endLine + 1, cls.endLine, cls.name));
 }
