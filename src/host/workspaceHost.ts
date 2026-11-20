@@ -1,5 +1,6 @@
 // WorkspaceHost implementation backed by VS Code: open-buffer-aware reads with a symlink-escape guard,
 // index-based file listing, and diagnostics. Writes and commands are delegated.
+import * as path from 'node:path';
 import picomatch from 'picomatch';
 import * as vscode from 'vscode';
 import type { CodeIndex } from '../core/context/codeIndex';
@@ -51,6 +52,10 @@ export class VsCodeWorkspaceHost implements WorkspaceHost {
       .slice(0, limit);
   }
 
+  private inRoot(fsPath: string): boolean {
+    return fsPath === this.root || fsPath.startsWith(this.root.endsWith(path.sep) ? this.root : this.root + path.sep);
+  }
+
   async diagnostics(rel?: string): Promise<DiagnosticInfo[]> {
     const all = rel
       ? [
@@ -62,7 +67,7 @@ export class VsCodeWorkspaceHost implements WorkspaceHost {
       : vscode.languages.getDiagnostics();
     const out: DiagnosticInfo[] = [];
     for (const [uri, diags] of all) {
-      if (uri.scheme !== 'file' || !uri.fsPath.startsWith(this.root)) continue;
+      if (uri.scheme !== 'file' || !this.inRoot(uri.fsPath)) continue;
       const p = toRelative(this.root, uri.fsPath);
       for (const d of diags) {
         out.push({

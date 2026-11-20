@@ -23,6 +23,24 @@ function lastSegment(name: string): string {
   return name.slice(name.lastIndexOf('.') + 1);
 }
 
+const GREP_MAX_LINES = 200_000;
+const GREP_MAX_MS = 200;
+const NESTED_QUANTIFIER = /(\([^)]*[+*][^)]*\)|\[[^\]]*\][+*])[+*{]/;
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Model-supplied patterns: invalid or backtracking-prone (nested quantifier) ones fall back to literal search.
+function safeRegExp(pattern: string, flags: string): RegExp {
+  if (NESTED_QUANTIFIER.test(pattern)) return new RegExp(escapeRegExp(pattern), flags);
+  try {
+    return new RegExp(pattern, flags);
+  } catch {
+    return new RegExp(escapeRegExp(pattern), flags);
+  }
+}
+
 export class CodeIndex {
   private contents = new Map<string, string>();
   private syms = new Map<string, SymbolInfo[]>();
@@ -136,25 +154,29 @@ export class CodeIndex {
     return [...seen].slice(0, 20);
   }
 
+  // True when the most recent grep() stopped early because it hit its scan budget.
+  grepTruncated = false;
+
   grep(
     pattern: string,
     opts?: { glob?: string; limit?: number; ignoreCase?: boolean },
   ): { path: string; line: number; text: string }[] {
-    const flags = opts?.ignoreCase ? 'i' : '';
-    let re: RegExp;
-    try {
-      re = new RegExp(pattern, flags);
-    } catch {
-      re = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    }
+    const re = safeRegExp(pattern, opts?.ignoreCase ? 'i' : '');
     const glob = opts?.glob;
     const match = glob ? picomatch(glob, { dot: true, basename: !glob.includes('/') }) : () => true;
     const limit = opts?.limit ?? 100;
     const out: { path: string; line: number; text: string }[] = [];
+    const t0 = Date.now();
+    let scanned = 0;
+    this.grepTruncated = false;
     for (const rel of this.files()) {
       if (!match(rel)) continue;
       const lines = (this.contents.get(rel) as string).split('\n');
       for (let i = 0; i < lines.length; i++) {
+        if (++scanned > GREP_MAX_LINES || (scanned % 1000 === 0 && Date.now() - t0 > GREP_MAX_MS)) {
+          this.grepTruncated = true;
+          return out;
+        }
         if (!re.test(lines[i]!)) continue;
         out.push({ path: rel, line: i + 1, text: lines[i]!.trim().slice(0, 200) });
         if (out.length >= limit) return out;

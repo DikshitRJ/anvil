@@ -5,6 +5,15 @@ import type { Chunk, ContextSignals } from './types';
 
 const RRF_K = 60;
 
+// Multiplier for paths that are rarely the right edit target (changelogs, data fixtures, tooling).
+export function pathPrior(path: string): number {
+  const base = path.slice(path.lastIndexOf('/') + 1);
+  if (/^(CHANGES|CHANGELOG|HISTORY)([._-].*)?$/i.test(base)) return 0.3;
+  if (/(^|\/)\.(devcontainer|github|circleci)\//.test(path)) return 0.5;
+  if (/(^|\/)(tests?|static)\//.test(path) && /\.(json|toml|ya?ml|cfg|ini)$/i.test(path)) return 0.5;
+  return 1;
+}
+
 export interface Candidate {
   chunk: Chunk;
   score: number;
@@ -81,7 +90,8 @@ class Fusion {
   }
 
   sorted(): Candidate[] {
-    return [...this.map.values()].sort((a, b) => b.score - a.score || (a.chunk.id < b.chunk.id ? -1 : 1));
+    const fused = [...this.map.values()].map((c) => ({ ...c, score: c.score * pathPrior(c.chunk.path) }));
+    return fused.sort((a, b) => b.score - a.score || (a.chunk.id < b.chunk.id ? -1 : 1));
   }
 
   topFiles(n: number): string[] {
