@@ -1,13 +1,11 @@
-# Anvil: write-up (draft)
+# Anvil: write-up
 
-Repository: https://github.com/DikshitRJ/anvil (MIT). Demo video: TODO (link, unlisted or "anyone with the link").
+Repository: https://github.com/DikshitRJ/anvil (MIT). Demo video: _link to be added by the team (YouTube unlisted or Drive "anyone with the link")_.
 
 ## 1. Team
 
-- TODO: member 1 name, college or employer, GitHub handle
-- TODO: member 2 name, college or employer, GitHub handle
-- TODO: add up to three more members, or delete unused lines
-- TODO: team name (used in the social media hashtag)
+- Dikshit Rishi Jain — GitHub [@DikshitRJ](https://github.com/DikshitRJ) — college/employer: _to be filled by the team_
+- Team name: _to be filled by the team_ (used in the social media hashtag)
 
 ## 2. Starting point
 
@@ -56,8 +54,9 @@ Models used for this submission:
 
 | Model | Provider and where it ran | Used for | Approx. cost |
 | --- | --- | --- | --- |
-| TODO | TODO (for example, a hosted API or local Ollama) | TODO | TODO |
-| TODO | TODO | TODO | TODO |
+| Scripted OpenAI-compatible mock (`test/e2e/mockLlm.ts`) | Registered in a real TrueForge as a `custom` provider; ran on GitHub Actions runners | End-to-end CI of the agent loop, approvals, cancel and fallback | $0 |
+| `broken/broken-model` (unreachable endpoint) | Registered in TrueForge on GitHub Actions | Proves automatic fallback and clean failure (Task C) | $0 |
+| Demo model(s) | _to be filled by the team after recording (e.g. a hosted API primary + local Ollama fallback)_ | Tasks A–C in the video | _to be filled_ |
 
 ## 6. Scorecard
 
@@ -65,15 +64,15 @@ The timestamps are to be filled in from the final video.
 
 | Criterion | Video timestamp | Claim |
 | --- | --- | --- |
-| A1 Inline edit | TODO | A streamed inline diff, with per-hunk accept and reject |
-| A2 Agent mode | TODO | The agent finds and edits three or more files without being named |
-| A3 Streaming and cancellation | TODO | Stop or Esc halts the run at once and reverts its applied changes |
-| B1 Context assembly | TODO | Budgeted, explainable context (12k default), with reasons in the Context Inspector and the TrueForge turn |
-| B2 Diff safety | TODO | Nothing is written before review, and an undo timeline reverts applied changes |
-| B3 Resilience (Task C) | TODO | The model chain falls back within the same session, and the workspace stays unchanged |
-| B4 TrueForge integration depth | TODO | Editor tools are MCP tools, approval drives the review, and deferred tools, subagents and compaction are used |
-| C1 Video | TODO | Tasks A, B and C appear in order, each with its on-screen verification |
-| C2 Write-up | TODO | Architecture, context strategy, model setup, trade-offs and limitations are all stated |
+| A1 Inline edit | _tbd_ | A streamed inline diff, with per-hunk accept and reject |
+| A2 Agent mode | _tbd_ | The agent finds and edits three or more files without being named |
+| A3 Streaming and cancellation | _tbd_ | Stop or Esc halts the run at once and reverts its applied changes |
+| B1 Context assembly | _tbd_ | Budgeted, explainable context (12k default), with reasons in the Context Inspector and the TrueForge turn |
+| B2 Diff safety | _tbd_ | Nothing is written before review, and an undo timeline reverts applied changes |
+| B3 Resilience (Task C) | _tbd_ | The model chain falls back within the same session, and the workspace stays unchanged |
+| B4 TrueForge integration depth | _tbd_ | Editor tools are MCP tools, approval drives the review, and deferred tools, subagents and compaction are used |
+| C1 Video | _tbd_ | Tasks A, B and C appear in order, each with its on-screen verification |
+| C2 Write-up | _tbd_ | Architecture, context strategy, model setup, trade-offs and limitations are all stated |
 
 ## 7. Tools used
 
