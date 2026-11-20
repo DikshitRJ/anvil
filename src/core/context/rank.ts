@@ -11,6 +11,8 @@ export function pathPrior(path: string): number {
   if (/^(CHANGES|CHANGELOG|HISTORY)([._-].*)?$/i.test(base)) return 0.3;
   if (/(^|\/)\.(devcontainer|github|circleci)\//.test(path)) return 0.5;
   if (/(^|\/)(tests?|static)\//.test(path) && /\.(json|toml|ya?ml|cfg|ini)$/i.test(path)) return 0.5;
+  if (/(^|\/)(examples?|samples)\//i.test(path)) return 0.6;
+  if (!path.includes('/') && /^\.[\w.-]*(config|rc|ignore)\b/i.test(base)) return 0.5;
   return 1;
 }
 
@@ -57,14 +59,21 @@ export function identifiers(query: string): string[] {
   return [...new Set([...quoted, ...words])];
 }
 
+const COMMON_PATH_TOKEN = 0.1;
+const MIN_FILES_FOR_CUTOFF = 50; // the 10% cutoff is meaningless on tiny repos; IDF still applies
+
+// Path-match signal: query tokens weighted by IDF over path tokens; tokens in >10% of paths are ignored.
 function pathMatches(index: CodeIndex, q: Set<string>): { path: string; terms: string[] }[] {
   const toks = new Map(index.files().map((f) => [f, new Set(tokenize(f))]));
   const df = new Map<string, number>();
   for (const set of toks.values()) for (const t of set) df.set(t, (df.get(t) ?? 0) + 1);
+  const n = toks.size;
+  const rare = (t: string): boolean => n < MIN_FILES_FOR_CUTOFF || (df.get(t) ?? n) / n <= COMMON_PATH_TOKEN;
   const scored: { path: string; terms: string[]; s: number }[] = [];
   for (const [path, set] of toks) {
-    const terms = [...q].filter((t) => set.has(t));
-    if (terms.length) scored.push({ path, terms, s: terms.reduce((a, t) => a + 1 / (df.get(t) ?? 1), 0) });
+    const terms = [...q].filter((t) => set.has(t) && rare(t));
+    const s = terms.reduce((a, t) => a + Math.log(1 + n / df.get(t)!), 0);
+    if (terms.length) scored.push({ path, terms, s });
   }
   return scored.sort((a, b) => b.s - a.s || (a.path < b.path ? -1 : 1)).slice(0, 20);
 }
