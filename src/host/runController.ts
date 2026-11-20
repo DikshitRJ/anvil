@@ -244,7 +244,7 @@ export class RunController implements WriteGate {
       relay: new ModelRelay({ models: cfg.models, retriesPerModel: cfg.retriesPerModel, backoffMs: [500, 1500, 4000] }),
       stallTimeoutMs: cfg.stallTimeoutSec * 1000,
       baseUrl: cfg.trueforgeUrl,
-      // TODO(#26): pass `isBusy: this.isBusy` once AnvilSession accepts it.
+      isBusy: this.isBusy,
       title,
     });
   }
