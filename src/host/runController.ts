@@ -79,7 +79,8 @@ export class RunController implements WriteGate {
   private async writeAndRecord(runId: string, rel: string, content: string, summary: string): Promise<void> {
     const before = await this.d.readFile(rel);
     await this.fileStore.write(rel, content);
-    this.checkpoints.record({ runId, path: rel, before, after: content, summary });
+    const after = (await this.d.readFile(rel)) ?? content; // post-save text (VS Code may normalise EOLs)
+    this.checkpoints.record({ runId, path: rel, before, after, summary });
   }
 
   async runCommand(command: string, opts: { cwd?: string; timeoutMs: number }) {

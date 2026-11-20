@@ -20,7 +20,9 @@ function killTree(child: ChildProcess, signal: NodeJS.Signals): void {
 
 function terminate(child: ChildProcess): void {
   killTree(child, 'SIGTERM');
-  setTimeout(() => killTree(child, 'SIGKILL'), 2000).unref();
+  const kill = setTimeout(() => killTree(child, 'SIGKILL'), 2000);
+  kill.unref();
+  child.once('close', () => clearTimeout(kill));
 }
 
 export class CommandRunner implements vscode.Disposable {

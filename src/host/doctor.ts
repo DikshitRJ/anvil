@@ -10,6 +10,8 @@ export interface DoctorDeps {
   cfg: AnvilConfig;
   client: TrueForge;
   bridgeUrl: string | undefined;
+  /** 'elsewhere': another VS Code window owns the port (EADDRINUSE); not a failure. */
+  bridgeState?: 'ok' | 'elsewhere' | 'failed';
   token: string;
   indexedFiles: number;
   indexReady: boolean;
@@ -22,6 +24,8 @@ export interface Check {
   fix?: string;
   /** True when "Run setup" would fix it. */
   setup?: boolean;
+  /** Passing, but worth a hint (shown as a warning sign). */
+  warn?: boolean;
 }
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -45,7 +49,16 @@ async function checkTrueForge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
       };
 }
 
+const ELSEWHERE_FIX = 'Use the agent panel in the owning window, or change anvil.mcpPort.';
+
 async function checkBridge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
+  if (d.bridgeState === 'elsewhere')
+    return {
+      ok: true,
+      warn: true,
+      detail: `served by another VS Code window (port ${d.cfg.mcpPort}); inline edit works here`,
+      fix: ELSEWHERE_FIX,
+    };
   if (!d.bridgeUrl)
     return {
       ok: false,
@@ -68,6 +81,8 @@ async function checkBridge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
 }
 
 async function checkRegistered(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
+  if (d.bridgeState === 'elsewhere')
+    return { ok: true, warn: true, detail: 'managed by the window that owns the bridge', fix: ELSEWHERE_FIX };
   const res = await d.client.settings.mcpServers.get(MCP_SERVER_NAME);
   const url = (res.data.manifest as { url?: string }).url;
   const ok = !!d.bridgeUrl && url === d.bridgeUrl;
@@ -139,6 +154,9 @@ const skipped = (name: string): Promise<Check> =>
 
 export function formatReport(checks: Check[]): string {
   return checks
-    .map((c) => `${c.ok ? '✓' : '✗'} ${c.name}: ${c.detail}${!c.ok && c.fix ? `\n    fix: ${c.fix}` : ''}`)
+    .map(
+      (c) =>
+        `${c.ok ? (c.warn ? '⚠' : '✓') : '✗'} ${c.name}: ${c.detail}${(!c.ok || c.warn) && c.fix ? `\n    ${c.ok ? 'hint' : 'fix'}: ${c.fix}` : ''}`,
+    )
     .join('\n');
 }

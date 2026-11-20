@@ -2,6 +2,7 @@
 // Contains no business logic; it only moves protocol messages between the extension and the webview.
 import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
+import { enqueue } from './messageQueue';
 import type { HostToWebview, WebviewToHost } from './protocol';
 
 /** Message types whose latest value is replayed to a freshly (re)loaded webview. */
@@ -41,7 +42,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   /** Queue until the view is resolved and the webview reported 'ready', then flush in order. */
   post(msg: HostToWebview): void {
     if ((REPLAYED as readonly string[]).includes(msg.type)) this.last.set(msg.type, msg);
-    this.queue.push(msg);
+    this.queue = enqueue(this.queue, msg, REPLAYED);
     this.flush();
   }
 
