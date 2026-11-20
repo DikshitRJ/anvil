@@ -154,3 +154,30 @@ describe('base snapshots (issue 45)', () => {
     expect(fs.files.get('a')).toBe('orig');
   });
 });
+
+describe('revertRun with fully evicted paths', () => {
+  it('restores the base for a path whose undo entries were all evicted', async () => {
+    const { fs, cp } = setup(2);
+    fs.files.set('a', 'a1');
+    rec(cp, 'r', 'a', 'a0', 'a1');
+    rec(cp, 'r', 'b', null, 'b1');
+    rec(cp, 'r', 'c', null, 'c1');
+    expect(cp.forRun('r').map((e) => e.path)).toEqual(['b', 'c']);
+    fs.files.set('b', 'b1');
+    fs.files.set('c', 'c1');
+    const rep = await cp.revertRun('r');
+    expect(rep.restored.sort()).toEqual(['a', 'b', 'c']);
+    expect(fs.files.get('a')).toBe('a0');
+  });
+  it('reports a conflict for an evicted path changed since, unless forced', async () => {
+    const { fs, cp } = setup(1);
+    fs.files.set('a', 'edited');
+    rec(cp, 'r', 'a', 'a0', 'a1');
+    rec(cp, 'r', 'b', null, 'b1');
+    fs.files.set('b', 'b1');
+    const rep = await cp.revertRun('r');
+    expect(rep).toEqual({ restored: ['b'], conflicts: ['a'] });
+    await cp.revertRun('r', { force: true });
+    expect(fs.files.get('a')).toBe('a0');
+  });
+});

@@ -24,7 +24,7 @@ export class CheckpointStore {
   private entries: AppliedChange[] = [];
   private nextSeq = 1;
   // first `before` per path per run; survives undo-list eviction so revertRun restores the true base
-  private bases = new Map<string, Map<string, string | null>>();
+  private bases = new Map<string, Map<string, { before: string | null; lastAfter: string }>>();
   private listeners = new Set<() => void>();
 
   constructor(
@@ -41,7 +41,9 @@ export class CheckpointStore {
       this.bases.set(c.runId, run);
       while (this.bases.size > this.maxBaseRuns) this.bases.delete(this.bases.keys().next().value as string);
     }
-    if (!run.has(c.path)) run.set(c.path, c.before);
+    const b = run.get(c.path);
+    if (b) b.lastAfter = c.after;
+    else run.set(c.path, { before: c.before, lastAfter: c.after });
     this.entries.push(change);
     while (this.entries.length > this.maxEntries) this.entries.shift();
     this.emit();
@@ -90,13 +92,17 @@ export class CheckpointStore {
       byPath.set(e.path, [...(byPath.get(e.path) ?? []), e]);
     }
     const base = this.bases.get(runId);
-    for (const [path, list] of byPath) {
+    const paths = new Set([...byPath.keys(), ...(base ? base.keys() : [])]);
+    for (const path of paths) {
+      const list = byPath.get(path) ?? [];
       const current = await this.store.read(path);
-      if (current !== list[0]?.after && !opts?.force) {
+      const expected = list[0]?.after ?? base?.get(path)?.lastAfter;
+      if (current !== expected && !opts?.force) {
         report.conflicts.push(path);
         continue;
       }
-      const target = base?.has(path) ? (base.get(path) ?? null) : (list[list.length - 1]?.before ?? null);
+      const b = base?.get(path);
+      const target = b ? b.before : (list[list.length - 1]?.before ?? null);
       await this.restore(path, target);
       report.restored.push(path);
       this.drop(new Set(list.map((x) => x.seq)));
