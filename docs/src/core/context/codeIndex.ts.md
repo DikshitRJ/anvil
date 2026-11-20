@@ -21,3 +21,5 @@ In-memory index of the workspace: file contents, symbols, chunks, BM25 search, i
 
 **Notes**
 - Content is held in memory; only text files are indexed.
+
+- Nonpositive result limits return an empty array. Grep also resets its truncation flag for empty requests.

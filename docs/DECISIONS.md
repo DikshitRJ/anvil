@@ -214,3 +214,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-028 — Charge only actual window separators
 **Context.** Window growth charged a nonexistent trailing newline and discarded an exact-fit adjacent line.
 **Decision.** Initialize usage with the center line length; each additional line costs its length plus one separator.
+
+## D-029 — Nonpositive retrieval limits mean no results
+**Context.** Search and grep emitted one result for zero limits, while BM25 negative slicing returned unintended results.
+**Decision.** Return no results before scanning or ranking when the requested result count is nonpositive.

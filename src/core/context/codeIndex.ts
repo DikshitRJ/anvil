@@ -113,6 +113,7 @@ export class CodeIndex {
   }
 
   search(query: string, k = 10): SearchHit[] {
+    if (k <= 0) return [];
     const q = tokenize(query);
     const idents = new Set(query.split(/[^\w]+/).filter(isIdentifierLike));
     const scored = this.bm25.search(q, Math.max(k * 8, 60)).map((h) => {
@@ -169,6 +170,7 @@ export class CodeIndex {
     const t0 = Date.now();
     let scanned = 0;
     this.grepTruncated = false;
+    if (limit <= 0) return [];
     for (const rel of this.files()) {
       if (!match(rel)) continue;
       const lines = (this.contents.get(rel) as string).split('\n');

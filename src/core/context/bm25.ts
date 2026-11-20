@@ -38,7 +38,7 @@ export class Bm25Index {
 
   search(q: string[], k: number): { id: string; score: number; matched: string[] }[] {
     const n = this.docLen.size;
-    if (n === 0) return [];
+    if (n === 0 || k <= 0) return [];
     const avg = this.totalLen / n || 1;
     const scores = new Map<string, { score: number; matched: string[] }>();
     for (const t of new Set(q)) {
