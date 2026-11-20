@@ -85,3 +85,28 @@ describe('command deadlines', () => {
     runner.dispose();
   });
 });
+
+describe('command cancellation bookkeeping', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('kills only active commands and preserves cancellation output', async () => {
+    vi.useFakeTimers();
+    const finished = childProcess();
+    const active = childProcess();
+    mocks.spawn.mockReturnValueOnce(finished).mockReturnValueOnce(active);
+    const runner = new CommandRunner();
+    const first = runner.run('first', { cwd: '/workspace', timeoutMs: 10000 });
+    finished.emit('close', 0);
+    await first;
+    const second = runner.run('second', { cwd: '/workspace', timeoutMs: 10000 });
+    active.stdout.write('partial output');
+    runner.killAll();
+    expect(finished.kill).not.toHaveBeenCalled();
+    expect(active.kill).toHaveBeenCalledWith('SIGTERM');
+    active.emit('close', null);
+    expect(await second).toEqual({ output: 'partial output', exitCode: null, timedOut: false });
+    vi.advanceTimersByTime(20000);
+    expect(active.kill).toHaveBeenCalledTimes(1);
+    runner.dispose();
+  });
+});
