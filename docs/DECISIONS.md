@@ -202,3 +202,7 @@ the window filled with 400-line `read_file` results, and the model's output was 
 **Decision.** Keep compaction enabled but omit the trigger so TrueForge compacts at 80% of the configured model's
 context length. `read_file` returns 250-line windows (16 KB cap) by default; the agent can request more explicitly.
 **Supersedes** the explicit 60k trigger in PLAN Appendix A.
+
+## D-026 — Decode command output per stream
+**Context.** Decoding each data buffer independently replaces split multibyte characters with replacement characters.
+**Decision.** Set UTF-8 encoding on stdout and stderr separately. Node buffers incomplete sequences per stream; decoded strings feed both the output cap and the channel.

@@ -41,13 +41,12 @@ export class CommandRunner implements vscode.Disposable {
         env: process.env,
       });
       this.running.add(child);
-      const onData = (d: Buffer): void => {
-        const s = d.toString('utf8');
+      const onData = (s: string): void => {
         out.push(s);
         this.channel.append(s);
       };
-      child.stdout?.on('data', onData);
-      child.stderr?.on('data', onData);
+      child.stdout?.setEncoding('utf8').on('data', onData);
+      child.stderr?.setEncoding('utf8').on('data', onData);
       const timer = setTimeout(() => {
         timedOut = true;
         terminate(child);

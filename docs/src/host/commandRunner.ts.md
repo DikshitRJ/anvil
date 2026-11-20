@@ -19,3 +19,5 @@ Runs shell commands for the `run_command` tool with capped output, a timeout, an
 
 **Notes**
 - The exit line `[exit N, timed out]` is written to the channel only.
+
+- Each output stream uses its own UTF-8 decoder, retaining incomplete characters between byte chunks.
