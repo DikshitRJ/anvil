@@ -1,25 +1,40 @@
 # `src/core/context/codeIndex.ts`
 
 **Purpose**
-This file manages an in-memory index of a codebase. It stores file contents, symbols, chunks, and import relationships to support searching and repository mapping.
+Provides an in-memory index of a codebase including file contents, symbols, chunks, and an import graph. It enables efficient searching, symbol lookups, and repository mapping.
 
 **Exports**
-* CodeIndex(root: string): CodeIndex - class - Manages the codebase index and provides search and navigation methods.
+* CodeIndex(root: string): class: Represents the primary index structure and provides methods for indexing and querying the codebase.
 
 **Collaborators**
-* Imports: `node:fs`, `node:path`, `picomatch`, `./assemble`, `./bm25`, `./chunker`, `./imports`, `./symbols`, `./tokenize`, `./walker`.
-* Exports: Not visible from this file.
+* Imports:
+    * `node:fs`: Used to read file contents from the filesystem.
+    * `node:path`: Used to handle and join file paths.
+    * `picomatch`: Used to filter files based on glob patterns.
+    * `./assemble`: Used to estimate token counts for repository mapping.
+    * `./bm25`: Used to manage the BM25 search index.
+    * `./chunker`: Used to split file contents into searchable chunks.
+    * `./imports`: Used to extract and resolve import specifications.
+    * `./symbols`: Used to extract symbol information from content.
+    * `./tokenize`: Used to convert strings into tokens for indexing and searching.
+    * `./types`: Provides type definitions for Chunk, SearchHit, and SymbolInfo.
+    * `./walker`: Used to recursively walk the workspace directory.
+* Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* Skips binary files by checking for NUL bytes in the first 8 KB.
-* Limits search results to a maximum of 3 hits per file.
-* Uses a concurrency limit of 32 workers during index building.
-* Resets the import graph to undefined when a file is updated or removed.
-* Sorts file lists alphabetically.
-* Sorts search results by score, then by chunk ID.
-* Limits symbol search results to 20 items.
-* Limits grep results to a default of 100 matches.
+* `CONCURRENCY` is set to 32 for parallel file processing.
+* `MAX_PER_FILE` is set to 3, limiting the number of search hits returned per file.
+* `GREP_MAX_LINES` is set to 200,000 and `GREP_MAX_MS` is set to 200 for grep execution limits.
+* `safeRegExp` falls back to a literal search if a pattern contains a `NESTED_QUANTIFIER`.
+* `build` skips files containing a `NUL` byte in the first 8192 bytes.
+* `search` applies a 1.25 score multiplier if a query token exists in the file's path tokens.
+* `search` applies a 1.4 score multiplier if the last segment of a chunk's symbol matches an identifier in the query.
+* `findSymbol` returns up to 20 results based on a multi-stage matching process.
+* `repoMap` defaults to a `maxTokens` limit of 1500.
+* `dirLines` limits the directory tree depth to the top 2 levels.
 
 **Notes**
-* The `repoMap` method uses a token estimation to truncate the output if it exceeds the `maxTokens` limit.
-* The `search` method applies specific score multipliers for path token matches (1.25x) and symbol matches (1.4x).
+* `grep` sets `grepTruncated` to true if the scan budget is exceeded.
+* `updateFile` clears the existing index for a file before re-indexing.
+* `importGraph` is lazily initialized and cached in the `graph` property.
+* `removeFile` deletes entries from all internal maps and the BM25 index.

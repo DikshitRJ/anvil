@@ -1,26 +1,29 @@
 # `src/core/transaction.ts`
 
 **Purpose**
-This file manages a checkpoint store for file edits. It allows the system to undo single changes or entire runs of changes.
+This file manages a checkpoint store to record applied edits for undo and revert operations. It tracks changes, maintains base states for runs, and handles restoration of file content.
 
 **Exports**
-* FileStore(rel: string): Promise<string | null> - interface: Defines methods to read, write, and remove files.
-* AppliedChange(seq: number, runId: string, path: string, before: string | null, after: string, at: number, summary: string): object - interface: Represents a single recorded change.
-* RestoreReport(restored: string[], conflicts: string[]): object - interface: Contains the results of a restore or revert operation.
-* CheckpointStore(store: FileStore, maxEntries: number): class: Manages a list of applied changes and provides methods to undo or revert them.
+* FileStore (interface): Defines methods for reading, writing, and removing file content.
+* AppliedChange (interface): Represents a single recorded change with sequence, run ID, path, and content states.
+* RestoreReport (interface): Contains lists of restored paths and paths with conflicts.
+* CheckpointStore (class): Manages the collection of changes, base states, and provides undo/revert logic.
 
 **Collaborators**
-Imports: Not visible from this file.
-Exports: Not visible from this file.
+* Imports: Not visible from this file.
+* Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* The store keeps a maximum of 200 entries.
-* The `undo` method skips a change if the current file content does not match the recorded `after` value, unless the `force` option is true.
-* The `revertRun` method processes changes in reverse order.
-* The `revertRun` method restores the earliest `before` state for each file in a run.
-* The `drop` method removes entries from the internal list when a restore succeeds.
-* The `emit` method notifies all registered listeners after a change or restore.
+* `CheckpointStore` limits `entries` to a maximum of `maxEntries` (default 200) by shifting the oldest entries.
+* `CheckpointStore` limits `bases` to a maximum of `maxBaseRuns` (default 50) by deleting the oldest run.
+* `record` assigns a monotonically increasing `nextSeq` starting at 1 and captures the current timestamp as `at`.
+* `record` stores the first `before` value per path per run in the `bases` map to ensure true base restoration.
+* `undo` only restores a path if the current content matches the `after` state or if `force` is true.
+* `revertRun` processes changes in reverse order and identifies the target state based on the `bases` map or the earliest `before` value.
+* `onChange` registers a listener and returns a function to remove that listener.
 
 **Notes**
-* If `before` is null, the `restore` method removes the file.
-* The `onChange` method returns a function to remove the listener.
+* `undo` returns an empty `RestoreReport` if the sequence number is not found.
+* `restore` performs a `store.remove` if the `before` value is `null`.
+* `emit` executes all registered listeners in the `listeners` set.
+* `drop` removes specific entries from the `entries` array based on a set of sequence numbers.
