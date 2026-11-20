@@ -23,4 +23,4 @@ Detailed scope per task lives in docs/PLAN.md. Each task lands as one or more PR
 - [x] 5.1 Per-file docs mirror, CODEBASE, AGENTS, CONTRIBUTING, FLOW, README, WRITEUP
 
 ## 6. Review
-- [ ] 6.1 Independent review → GitHub issues → fixes
+- [x] 6.1 Independent review → GitHub issues → fixes
