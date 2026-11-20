@@ -1,11 +1,11 @@
 # `src/host/inlineEdit.ts`
 
 **Purpose**
-This file implements the `anvil.inlineEdit` command. It streams a rewrite of a user's selection into a live whole-file diff and provides a per-hunk review process.
+This file implements the `anvil.inlineEdit` command. It streams a rewrite of a selected code block into a live whole-file diff for per-hunk review.
 
 **Exports**
-* `cancelActiveInlineEdit()` (function): Returns a boolean indicating if an active inline edit was successfully cancelled.
-* `registerInlineEdit(context: vscode.ExtensionContext, deps: InlineEditDeps)` (function): Registers the `anvil.inlineEdit` command within the VS Code extension context.
+* `cancelActiveInlineEdit()`: function: Returns true if an active inline edit was cancelled, otherwise false.
+* `registerInlineEdit(context: vscode.ExtensionContext, deps: InlineEditDeps)`: function: Registers the `anvil.inlineEdit` command and manages its lifecycle.
 
 **Collaborators**
 * Imports:
@@ -18,17 +18,17 @@ This file implements the `anvil.inlineEdit` command. It streams a rewrite of a u
 * Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* `CONTEXT_CHAR_BUDGET` limits the context size to 8000 characters (approximately 2000 tokens).
-* `lineSelection` calculates a `vscode.Range` based on the current selection; if the selection is empty, it identifies the symbol at the cursor.
-* `buildContext` gathers symbol bodies from the `CodeIndex` based on identifiers found in the selection, limited by `CONTEXT_CHAR_BUDGET`.
-* `runJob` manages the lifecycle of an inline edit, including session creation, live review opening, and progress reporting.
-* `finishEdit` verifies that the file version has not changed (`j.doc.version !== j.version`) before applying the accepted edit.
-* `inlineEdit` prevents concurrent executions by checking the `activeCancel` state.
-* `workspaceRelative` ensures the file is inside the first workspace folder.
+* `CONTEXT_CHAR_BUDGET` limits the context to 8000 characters (approximately 2000 tokens).
+* `lineSelection` expands an empty selection to the symbol boundaries if a symbol is found at the cursor.
+* `lineSelection` reduces the end line by 1 if the selection ends at character 0 and spans multiple lines.
+* `buildContext` includes up to 5 lines of code for each symbol found in the selection.
+* `runJob` sets the `anvil.running` context to true during execution and false in the `finally` block.
+* `finishEdit` prevents applying the edit if the document version has changed since the job started.
+* `askInstruction` sets `activeCancel` to a no-op function while the input box is open to claim the execution slot.
+* `inlineEdit` only executes if the active editor is a file scheme.
 
 **Notes**
-* `cancelActiveInlineEdit` is triggered by the host's `anvil.cancel` handler.
-* `reportError` displays an error message and offers to open the "Doctor" command.
-* `askInstruction` claims the `activeCancel` slot while the input box is open.
-* `finishEdit` logs a warning and aborts if the file version changes during generation.
-* `runJob` catches errors during session creation and reports them via `reportError`.
+* `reportError` provides an option to run `anvil.doctor` when an error occurs.
+* `runJob` catches session creation errors and reports them via `reportError`.
+* `finishEdit` ignores the result if `r.content` is null.
+* `runJob` suppresses the toast notification on cancellation to avoid holding the inline-edit slot.
