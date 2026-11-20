@@ -216,6 +216,17 @@ Press **Stop** in the panel, press `Esc` while a run is active, or run **Anvil: 
 - **Anvil: Undo Last Applied Change** undoes the most recent change.
 - If a file changed after Anvil wrote it, Anvil asks before restoring it: "File changed since — restore anyway?".
 
+### Using a local model (Ollama)
+
+Ollama defaults to a small context window (often 4096 tokens), and it silently drops the start of a longer prompt. Anvil warns when the model reports far fewer input tokens than Anvil sent. To fix it, give the model a bigger window with a Modelfile:
+
+```
+FROM qwen2.5-coder:14b
+PARAMETER num_ctx 16384
+```
+
+Run `ollama create qwen2.5-coder-16k -f Modelfile` and point TrueForge at the new model, or set `OLLAMA_CONTEXT_LENGTH=16384` before starting Ollama. Keep `anvil.contextBudget` well below the window, because the system prompt, tool schemas and history share it. For a 4096-token window, use a budget of about 2000.
+
 ### Switching models
 
 Edit `anvil.models` in VS Code settings. The new chain applies to the next run. Anvil starts a fresh chat session when the chain changes while idle, so earlier history is not carried over.
