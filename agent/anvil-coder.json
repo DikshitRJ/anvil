@@ -18,7 +18,7 @@
       "ask_user_questions": { "enabled": true },
       "generative_ui": { "enabled": false },
       "context_management": {
-        "compaction": { "enabled": true, "trigger": { "type": "input_tokens", "value": 60000 } }
+        "compaction": { "enabled": true }
       },
       "iteration_limit": 60
     }
