@@ -222,3 +222,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-030 — Resolve emitted JavaScript imports to indexed sources
 **Context.** TypeScript source often imports `.js` paths, leaving import neighbours empty before compilation.
 **Decision.** Prefer an exact indexed path; otherwise try TypeScript source extensions and use the first existing JavaScript-family candidate.
+
+## D-031 — Include explicit TypeScript module extensions
+**Context.** `.mts` and `.cts` files were indexed as text but omitted from the import graph.
+**Decision.** Handle both extensions alongside existing JavaScript-family files, including their emitted module extensions.

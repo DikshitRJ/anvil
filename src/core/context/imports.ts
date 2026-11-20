@@ -1,7 +1,7 @@
 // Import extraction and resolution (Python, TS/JS) used for the 1-hop import graph.
 import * as path from 'node:path';
 
-const JS_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+const JS_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'];
 
 export interface ImportSpec {
   dots: number; // python relative level; 0 = absolute
@@ -56,7 +56,12 @@ function pythonCandidates(rel: string, s: ImportSpec): string[] {
 
 function jsCandidates(rel: string, s: ImportSpec): string[] {
   const base = path.posix.join(path.posix.dirname(rel), s.module);
-  const sourceExts: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.jsx': ['.tsx', '.ts'] };
+  const sourceExts: Record<string, string[]> = {
+    '.js': ['.ts', '.tsx'],
+    '.jsx': ['.tsx', '.ts'],
+    '.mjs': ['.mts'],
+    '.cjs': ['.cts'],
+  };
   const ext = path.posix.extname(base);
   if (JS_EXT.includes(ext)) return [base, ...(sourceExts[ext] ?? []).map((e) => base.slice(0, -ext.length) + e)];
   return [...JS_EXT.map((e) => base + e), ...JS_EXT.map((e) => `${base}/index${e}`)];

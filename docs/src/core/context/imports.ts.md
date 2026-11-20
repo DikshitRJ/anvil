@@ -22,3 +22,5 @@ Extracts and resolves imports (Python, TS/JS) for the 1-hop import graph.
 - Heuristic, line based; it does not handle multi-line TS imports whose specifier is on a different line than a `from`-less form, or aliased path mappings.
 
 - Relative `.js`/`.jsx` imports fall back to `.ts`/`.tsx` source files when the exact indexed path is absent. JavaScript resolution chooses the first existing candidate.
+
+- `.mts` and `.cts` files support import extraction, extensionless/directory lookup, and `.mjs`/`.cjs` source fallback.

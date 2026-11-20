@@ -18,3 +18,20 @@ describe('typescript source import resolution', () => {
     expect(resolve('src/main.ts', 'import "./missing.js";', [])).toEqual([]);
   });
 });
+
+describe('explicit esm and commonjs typescript imports', () => {
+  it.each([
+    ['mts', 'mjs'],
+    ['cts', 'cjs'],
+  ])('extracts and resolves %s imports', (source, emitted) => {
+    expect(resolve(`src/main.${source}`, `import value from './helper.${emitted}';`, [`src/helper.${source}`])).toEqual(
+      [`src/helper.${source}`],
+    );
+    expect(resolve(`src/main.${source}`, "import './helper';", [`src/helper.${source}`])).toEqual([
+      `src/helper.${source}`,
+    ]);
+    expect(resolve(`src/main.${source}`, "import './folder';", [`src/folder/index.${source}`])).toEqual([
+      `src/folder/index.${source}`,
+    ]);
+  });
+});
