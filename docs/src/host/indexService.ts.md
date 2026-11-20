@@ -1,31 +1,20 @@
 # `src/host/indexService.ts`
 
 **Purpose**
-This file manages the `CodeIndex` lifecycle by performing an initial asynchronous build and handling incremental updates. It uses a debounced `FileSystemWatcher` to synchronize the index with file system changes.
+Owns the `CodeIndex`: an initial asynchronous build plus incremental updates from a debounced file watcher.
 
 **Exports**
-* IndexService(root: string, onStatus: (state: { ready: boolean; files: number }) => void, log: (msg: string) => void): class Implements vscode.Disposable: Defines the service that manages the code index and file system watching.
+- `IndexService(root, onStatus, log)` (implements `vscode.Disposable`): `index`, `ready`, `start()`, `dispose()`.
 
 **Collaborators**
-* Imports:
-    * `vscode`: Provides the `Disposable` interface, `workspace` for file system watching and stats, and `Uri` for path handling.
-    * `../core/context/codeIndex`: Provides the `CodeIndex` class used to store and update the index.
-    * `../core/paths`: Provides `toRelative` to convert absolute paths to relative paths.
-    * `./panelEvents`: Provides `isIgnoredPath` to filter out specific paths from indexing.
-* Exports used by: Not visible from this file.
+- Imports: `vscode`, `../core/context/codeIndex`, `../core/paths` (`toRelative`), `./panelEvents` (`isIgnoredPath`).
+- Used by: `extension.ts`, run controller (context), MCP host.
 
 **Key behaviour and invariants**
-* `MAX_BYTES` is set to 524288 (512 * 1024) bytes.
-* `DEBOUNCE_MS` is set to 300 milliseconds.
-* The `queue` method ignores URIs that do not have the `file` scheme.
-* The `queue` method ignores paths that start with `..` or are identified by `isIgnoredPath`.
-* The `refresh` method ignores files that are not of type `vscode.FileType.File`.
-* The `refresh` method ignores files larger than `MAX_BYTES`.
-* The `refresh` method ignores files containing a `0` byte, treating them as binary.
-* The `flush` method clears the `changed` and `deleted` sets after copying their contents to arrays.
-* The `dispose` method clears the active timer and disposes of all registered `vscode.Disposable` objects.
+- `start` reports `{ready:false, files:0}`, builds the index reporting progress, sets `ready` and reports the final count. A failed build is only logged (the index stays not ready).
+- A `**/*` watcher queues create/change/delete events. Non-`file` URIs, paths outside the root (`..`) and ignored paths (`isIgnoredPath`) are dropped. A later event for a path replaces the earlier opposite one.
+- Events are debounced 300 ms, then deleted files are removed and changed files are refreshed in parallel; status is reported after each flush.
+- `refresh` re-reads the file and updates the index; it skips (leaves the old entry) non-files, files over 512 KB and binary files (NUL byte); if stat or read throws (e.g. the file vanished), the file is removed from the index.
 
 **Notes**
-* If `refresh` throws an error, the file is removed from the index via `index.removeFile`.
-* The `start` method logs an error message to the provided `log` function if the initial build fails.
-* `onStatus` is called with `ready: false` at the start of the build and updated upon completion or failure.
+- Searches issued before `ready` see a partial index; callers check `ready`.

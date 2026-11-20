@@ -1,25 +1,19 @@
 # `src/host/realPath.ts`
 
 **Purpose**
-This file provides a mechanism to ensure that a file path does not escape a specified root directory through symlinks. It validates that the real path of a given absolute path remains within the bounds of the root path.
+Symlink-escape guard that complements the purely lexical check in `core/paths.ts`.
 
 **Exports**
-* assertRealPathInside(root: string, abs: string): function: Asynchronously verifies that the real path of `abs` stays within `root`.
+- `assertRealPathInside(root, abs)`: async; throws `PathError` if `abs` really resolves outside `root`.
 
 **Collaborators**
-* Imports: 
-    * `node:fs/promises`: Provides `realpath` for resolving symlinks.
-    * `node:path`: Provides `relative`, `dirname`, and `isAbsolute` for path manipulation.
-    * `../core/paths`: Provides the `PathError` class.
-* Exports used by: Not visible from this file.
+- Imports: `node:fs/promises`, `node:path`, `../core/paths` (`PathError`).
+- Used by: `workspaceHost.ts`.
 
 **Key behaviour and invariants**
-* Resolves the `root` path to its real path using `fs.realpath`.
-* Iteratively checks the real path of the current path (`cur`) and its parents.
-* Throws a `PathError` if the relative path from `realRoot` to the resolved real path starts with `..` or is absolute.
-* Stops the loop and returns successfully if the parent directory of `cur` is equal to `cur`.
-* Re-throws any `PathError` encountered during the iteration.
+- Resolves the real path of `root`, then of `abs`. If `abs` does not exist yet (e.g. a new file), it walks up to the nearest existing ancestor and checks that one, so creating a file through a symlinked directory is also caught.
+- Escape means the relative path from the real root is `..`, starts with `..` plus the separator, or is absolute: it throws `Path escapes the workspace via symlink`.
+- Errors other than `PathError` (missing paths) only move the check to the parent; reaching the filesystem root without finding an existing path returns without error.
 
 **Notes**
-* The function handles symlink escaping by checking the resolved real path at every level of the directory tree.
-* Uses `path.sep` to ensure correct prefix matching for relative paths.
+- Check-then-use: it does not prevent a symlink swap after the check.

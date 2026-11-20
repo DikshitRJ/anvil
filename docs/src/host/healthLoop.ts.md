@@ -1,25 +1,20 @@
 # `src/host/healthLoop.ts`
 
 **Purpose**
-This file implements a polling mechanism to monitor the health of TrueForge. It periodically executes a check function and triggers callbacks based on the resulting state transitions.
+Polls TrueForge health and reports transitions.
 
 **Exports**
-* HealthLoop(check, onChange, onUp, intervalMs): class: Implements `vscode.Disposable` to manage a periodic health check timer.
+- `HealthLoop(check, onChange, onUp, intervalMs = 15000)` (implements `vscode.Disposable`): `current` getter, `start()`, `tick()`, `dispose()`.
 
 **Collaborators**
-* Imports: 
-    * `vscode`: Provides the `Disposable` interface.
-* Exports used by: Not visible from this file.
+- Imports: `vscode` (Disposable).
+- Used by: `extension.ts` (check is `checkHealth`; `onUp` triggers `setup`).
 
 **Key behaviour and invariants**
-* The `intervalMs` defaults to 15000.
-* The `state` property initializes to `'unknown'`.
-* The `tick` method uses a `busy` flag to prevent concurrent executions of the check.
-* The `tick` method catches any errors from the `check` function and treats them as `false`.
-* The `onChange` callback fires on every tick regardless of the transition.
-* The `onUp` callback fires only when the state transitions from a non-`ok` state to `'ok'`.
-* The `dispose` method clears the `timer` interval.
+- State starts `unknown`. `start()` runs a tick immediately and then every `intervalMs`.
+- `tick` is skipped while a previous tick is still running (`busy`). A rejected check counts as down.
+- `onChange('ok' | 'down')` fires on every tick, not only on changes. `onUp` fires only when the state goes from `down` or `unknown` to `ok` (so the first successful check also triggers setup).
+- `tick()` is public so a changed TrueForge URL can be re-checked at once. `dispose` stops the interval.
 
 **Notes**
-* The `start` method triggers an immediate `tick` before starting the interval.
-* The `tick` method is asynchronous but does not await the interval.
+- Timer errors are swallowed by `void`; nothing is retried beyond the next interval.
