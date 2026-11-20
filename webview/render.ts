@@ -292,6 +292,8 @@ export function render(refs: Refs, s: PanelState): void {
   refs.send.textContent = s.running ? 'Stop' : 'Send';
   refs.send.dataset.action = s.running ? 'cancel' : 'send';
   refs.send.classList.toggle('stop', s.running);
+  // Stop must always be clickable; Send only with text (the input handler covers typing).
+  refs.send.disabled = !s.running && refs.input.value.trim() === '';
   if (nearBottom) t.scrollTop = t.scrollHeight;
 }
 
