@@ -1,23 +1,30 @@
 # `src/panel/panelProvider.ts`
 
 **Purpose**
-This file hosts the Anvil panel webview. It moves protocol messages between the extension and the webview. It contains no business logic.
+Hosts the Anvil panel webview by managing message forwarding between the extension and the webview. It ensures messages are queued until the webview is ready and handles state replay for specific message types.
 
 **Exports**
-* PanelProvider(extensionUri: vscode.Uri, onMessage: (msg: WebviewToHost) => void): PanelProvider - class and provides the webview view provider.
-* viewType: string - constant and holds the value 'anvil.panel'.
+* PanelProvider (class): Implements `vscode.WebviewViewProvider` to manage the webview lifecycle and messaging.
 
 **Collaborators**
-* Imports: node:crypto, vscode, ./protocol.
-* Exports: Not visible from this file.
+* Imports:
+    * `node:crypto`: Provides `randomBytes` for generating CSP nonces.
+    * `vscode`: Provides the `WebviewViewProvider` interface and URI utilities.
+    * `./messageQueue`: Provides the `enqueue` function to manage the message queue.
+    * `./protocol`: Provides `HostToWebview` and `WebviewToHost` types for message definitions.
+* Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* The class queues messages until the webview reports a ready state.
-* It flushes the queue in the order of arrival.
-* It replays the latest 'init', 'health', and 'changes' messages to a new webview.
-* It generates a random nonce for the Content Security Policy (CSP).
-* It sets local resource roots for the webview.
+* `viewType` is set to `'anvil.panel'`.
+* `REPLAYED` messages include `'init'`, `'health'`, and `'changes'`.
+* `resolveWebviewView` sets `localResourceRoots` to `dist` and `media` directories.
+* `post` stores the latest value of `REPLAYED` types in a `last` map.
+* `receive` sets `ready` to `true` when a `'ready'` message is received.
+* `receive` prepends replayed messages to the queue before messages that are not in the replay set.
+* `flush` only sends messages if `view` is defined and `ready` is `true`.
+* `html` generates a Content-Security-Policy with a 16-byte base64 nonce.
 
 **Notes**
-* The `ready` flag prevents message delivery before the webview is initialized.
-* The `last` map stores the most recent state for replayable message types.
+* `resolveWebviewView` resets `ready` to `false` and clears the `view` on disposal.
+* `flush` clears the `queue` immediately after capturing the `pending` array.
+* `reveal` executes the `anvil.panel.focus` command.
