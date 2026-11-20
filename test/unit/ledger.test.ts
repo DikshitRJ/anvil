@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApprovalLedger, canonicalKey, scopedKey, stableStringify } from '../../src/core/ledger';
 
-const entry = { finalContent: 'x', acceptedHunks: [0], totalHunks: 1, feedback: '' };
+const entry = { finalContent: 'x', totalHunks: 1, feedback: '' };
 
 describe('stableStringify', () => {
   it('sorts keys recursively and matches JSON for primitives', () => {
@@ -54,5 +54,19 @@ describe('scopedKey', () => {
     expect(scopedKey('r1', 't', { a: 1, b: 2 })).toBe(scopedKey('r1', 't', { b: 2, a: 1 }));
     expect(scopedKey('r1', 't', {})).not.toBe(scopedKey('r2', 't', {}));
     expect(scopedKey(undefined, 't', {})).toBe(`|${canonicalKey('t', {})}`);
+  });
+});
+
+describe('ApprovalLedger TTL on take (issue 46)', () => {
+  afterEach(() => vi.useRealTimers());
+  it('returns undefined for an entry older than 10 minutes', () => {
+    vi.useFakeTimers();
+    const l = new ApprovalLedger();
+    l.put('k', { finalContent: 'x', totalHunks: 1, feedback: '' });
+    vi.advanceTimersByTime(10 * 60 * 1000 + 1);
+    expect(l.take('k')).toBeUndefined();
+    l.put('k2', { finalContent: 'x', totalHunks: 1, feedback: '' });
+    vi.advanceTimersByTime(60 * 1000);
+    expect(l.take('k2')?.finalContent).toBe('x');
   });
 });

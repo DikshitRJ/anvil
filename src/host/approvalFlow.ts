@@ -69,7 +69,7 @@ export class ApprovalFlow {
     this.d.post({ type: 'approvalResolved', runId, id: call.callId, outcome: reviewOutcome(r.accepted, r.total, ok) });
     if (!ok) return deny(r.feedback || 'The user rejected this change.');
     const key = scopedKey(runId, call.tool, call.input);
-    this.ledger.put(key, { finalContent: r.content, acceptedHunks: [], totalHunks: r.total, feedback: r.feedback });
+    this.ledger.put(key, { finalContent: r.content, totalHunks: r.total, feedback: r.feedback });
     this.originals.set(key, current);
     return { allow: true };
   }
