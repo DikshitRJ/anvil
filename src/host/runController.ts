@@ -86,7 +86,10 @@ export class RunController implements WriteGate {
     await this.writeAndRecord(this.active?.runId ?? 'manual', rel, content, summary);
   }
 
-  async applyStandalone(path: string, _before: string, after: string, summary: string): Promise<void> {
+  async applyStandalone(path: string, before: string, after: string, summary: string): Promise<void> {
+    const current = await this.d.readFile(path);
+    if ((current ?? '') !== before)
+      throw new Error(`${path} changed since the change was reviewed; nothing was written. Re-run the edit.`);
     await this.writeAndRecord(`inline-${Date.now()}`, path, after, summary);
   }
 
@@ -228,13 +231,16 @@ export class RunController implements WriteGate {
     }
     this.d.post({ type: 'runFinished', runId, status: result.status, model: result.model, ...optional(result) });
     if (result.status === 'error') this.notice('error', result.error ?? 'Run failed', ['Run Doctor'], runId);
-    if (result.status === 'cancelled' && cfg.cancelBehavior === 'revert') await this.revertAfterCancel(runId);
+    if (cfg.cancelBehavior !== 'revert') return;
+    if (result.status === 'cancelled') await this.revertRunWithNotice(runId, 'Run cancelled');
+    else if (result.status === 'error' && this.checkpoints.forRun(runId).length > 0)
+      await this.revertRunWithNotice(runId, 'Run failed');
   }
 
-  private async revertAfterCancel(runId: string): Promise<void> {
+  private async revertRunWithNotice(runId: string, label: string): Promise<void> {
     const report = await this.checkpoints.revertRun(runId);
     const conflicts = report.conflicts.length ? ` (changed since, left alone: ${report.conflicts.join(', ')})` : '';
-    this.notice('info', `Run cancelled — restored ${report.restored.length} file(s)${conflicts}`, undefined, runId);
+    this.notice('info', `${label} — restored ${report.restored.length} file(s)${conflicts}`, undefined, runId);
   }
 
   newSession(agent: AgentDefinition, cfg: AnvilConfig, title: string): AnvilSession {

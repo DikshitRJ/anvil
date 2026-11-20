@@ -229,13 +229,25 @@ export class ReviewController implements vscode.Disposable {
     if (tab) await vscode.window.tabGroups.close(tab);
   }
 
-  // user closed the diff tab by hand during decision mode: treat pending hunks as rejected
+  // user closed the diff tab with undecided hunks: cancel the review rather than commit a partial result
+  private closeUndecided(s: Session): void {
+    if (s.model && s.model.allDecided) return this.complete(s);
+    const total = s.model?.total ?? 0;
+    this.finalize(s);
+    s.settle?.resolve({
+      content: null,
+      accepted: 0,
+      total,
+      feedback: 'The user closed the review without deciding.',
+    });
+  }
+
+  // user closed the diff tab by hand during decision mode
   private onTabsChanged(): void {
     const s = this.current;
     if (!s || !s.opened || s.closing || !s.model) return;
     if (this.hasTab(s)) return;
-    for (const h of s.model.hunks) if (s.model.decisionOf(h.id) === 'pending') s.model.decide(h.id, 'rejected');
-    this.complete(s);
+    this.closeUndecided(s);
   }
 
   // ---- content, lenses, decorations ----
