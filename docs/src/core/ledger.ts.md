@@ -1,24 +1,28 @@
 # `src/core/ledger.ts`
 
 **Purpose**
-This file manages a ledger of review outcomes. It stores and retrieves entries based on a unique hash of tool names and arguments.
+This file manages an approval ledger that tracks review outcomes. It provides mechanisms to generate stable keys and store entries with a time-to-live (TTL) expiration.
 
 **Exports**
-* stableStringify(value: unknown): string - function: It converts a value into a consistent string format.
-* canonicalKey(tool: string, args: unknown): string - function: It creates a SHA-256 hash from a tool name and its arguments.
-* LedgerEntry: interface: It defines the structure for a review entry.
-* ApprovalLedger: class: It provides methods to store, retrieve, and clear ledger entries.
+* stableStringify(value: unknown): function: Converts a value into a deterministic string representation.
+* canonicalKey(tool: string, args: unknown): function: Generates a sha256 hex hash of a tool and its stable stringified arguments.
+* LedgerEntry: interface: Defines the structure for a ledger entry including content, hunk counts, and feedback.
+* ApprovalLedger: class: Manages a map of ledger entries with expiration logic.
+* scopedKey(runId: string | undefined, tool: string, input: Record<string, unknown>): function: Generates a key scoped by a run ID and a canonical key.
 
 **Collaborators**
-* Imports: node:crypto
+* Imports: node:crypto (createHash) is used to generate sha256 hashes.
 * Exports used by: Not visible from this file.
 
 **Key behaviour and invariants**
-* The ledger removes entries older than 10 minutes (600,000 milliseconds) during every `put` operation.
-* The `take` method removes the entry from the ledger when it is retrieved.
-* The `stableStringify` function sorts object keys alphabetically to ensure consistent hashes.
-* The `canonicalKey` function uses a newline character to separate the tool name and the arguments.
+* stableStringify sorts object keys alphabetically to ensure deterministic output.
+* canonicalKey uses the format `${tool}\n${stableStringify(args)}` for hashing.
+* ApprovalLedger uses a TTL_MS of 10 * 60 * 1000 (10 minutes).
+* put() removes all entries from the map that are older than TTL_MS before adding a new entry.
+* take() removes the entry from the map regardless of its age, but returns undefined if the entry is older than TTL_MS.
+* scopedKey prepends the runId (or an empty string) to the canonical key using a pipe separator.
 
 **Notes**
-* The `stableStringify` function returns "null" for null or undefined values.
-* The `put` method performs a full scan of the map to delete expired entries.
+* LedgerEntry.acceptedHunks is marked as deprecated and unused.
+* stableStringify returns 'null' for null or undefined values.
+* stableStringify filters out keys where the value is undefined.
