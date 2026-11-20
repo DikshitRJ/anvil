@@ -290,7 +290,7 @@ function registerRunCommand(server: McpServer, host: WorkspaceHost, gate: WriteG
       const cwd = args.cwd ? relPath(host, args.cwd) : undefined;
       // args passed untouched: see gatedWrite for why.
       if (!(await gate.authorizeCommand(args))) return fail('The user did not approve this command.');
-      const timeoutMs = Math.min(args.timeout_sec ?? 120, 600) * 1000;
+      const timeoutMs = Math.min(args.timeout_sec ?? host.defaultCommandTimeoutSec ?? 120, 600) * 1000;
       const r = await host.runCommand(args.command, { cwd, timeoutMs });
       const status = `exit code: ${r.exitCode}${r.timedOut ? ' (timed out)' : ''}`;
       return ok(`$ ${args.command}\n${status}\n${capCommandOutput(r.output)}`);

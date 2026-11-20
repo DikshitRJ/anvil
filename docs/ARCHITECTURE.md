@@ -304,6 +304,7 @@ export interface DiagnosticInfo { path: string; line: number; severity: 'error' 
 export interface WorkspaceHost {
   readonly root: string;
   readonly index: CodeIndex;
+  readonly defaultCommandTimeoutSec?: number;     // anvil.commandTimeoutSec; run_command default when timeout_sec is omitted (cap 600)
   readFile(rel: string): Promise<string | null>;
   listFiles(dir?: string, glob?: string, limit?: number): Promise<string[]>;
   diagnostics(rel?: string): Promise<DiagnosticInfo[]>;

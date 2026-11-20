@@ -166,10 +166,15 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     runDoctor: () => void doctor(),
     log,
   });
-  const host: VsCodeWorkspaceHost = new VsCodeWorkspaceHost(root, () => indexSvc.index, {
-    applyWrite: (rel, content, summary) => run.applyWrite(rel, content, summary),
-    runCommand: (c, o) => run.runCommand(c, o),
-  });
+  const host: VsCodeWorkspaceHost = new VsCodeWorkspaceHost(
+    root,
+    () => indexSvc.index,
+    {
+      applyWrite: (rel, content, summary) => run.applyWrite(rel, content, summary),
+      runCommand: (c, o) => run.runCommand(c, o),
+    },
+    () => cfg.commandTimeoutSec,
+  );
 
   const setup = async (): Promise<void> => {
     // An 'elsewhere' window must not re-register: it would overwrite the URL set by the owning window.

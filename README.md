@@ -79,10 +79,12 @@ npm run build
 2. Start TrueForge in local mode in a separate terminal, and leave it running.
 
 ```bash
-OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' npx @truefoundry/trueforge@latest
+HOST=localhost OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' npx @truefoundry/trueforge@latest
 ```
 
 TrueForge serves its API and its chat UI at http://localhost:8790. Local mode uses SQLite and needs no login.
+
+> **Why `HOST=localhost`?** zsh exports `HOST` (your machine's hostname) into the environment, and TrueForge reads `HOST` as its bind address. Without an explicit value it can bind to a name Anvil cannot reach. Setting `HOST=localhost` avoids that.
 
 > **Why the allowlist?** TrueForge's network policy blocks loopback URLs by default (`Outbound URL blocked for host 127.0.0.1`). Anvil's MCP bridge listens on `127.0.0.1:7801`, and local model servers such as Ollama listen on `localhost`, so TrueForge must be allowed to reach them. The real-TrueForge e2e suite starts TrueForge exactly this way.
 
