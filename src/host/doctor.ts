@@ -49,6 +49,9 @@ async function checkTrueForge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
       };
 }
 
+export const OUTBOUND_HINT =
+  'If TrueForge cannot reach the bridge or provider, start it with OUTBOUND_URL_ALLOWED_HOSTS=\'["127.0.0.1","localhost"]\' (loopback is blocked by default).';
+
 const ELSEWHERE_FIX = 'Use the agent panel in the owning window, or change anvil.mcpPort.';
 
 async function checkBridge(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
@@ -91,7 +94,7 @@ async function checkRegistered(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
     : {
         ok,
         detail: `registered url is ${url ?? '(none)'}, bridge is ${d.bridgeUrl ?? '(down)'}`,
-        fix: 'Run setup.',
+        fix: `Run setup. ${OUTBOUND_HINT}`,
         setup: true,
       };
 }
@@ -110,7 +113,7 @@ async function checkModels(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
     return {
       ok: false,
       detail: 'anvil.models is empty',
-      fix: 'Set anvil.models to model names configured in TrueForge.',
+      fix: `Set anvil.models to model names configured in TrueForge. ${OUTBOUND_HINT}`,
     };
   const available = (await d.client.models.list()).data;
   const known = new Set(available.flatMap((m) => [m.name, m.modelId]));
@@ -124,7 +127,7 @@ async function checkModels(d: DoctorDeps): Promise<Omit<Check, 'name'>> {
   return {
     ok: false,
     detail: `not found in TrueForge: ${missing.join(', ')}. Available: ${names}`,
-    fix: 'Fix anvil.models or add the provider in TrueForge.',
+    fix: `Fix anvil.models or add the provider in TrueForge. ${OUTBOUND_HINT}`,
   };
 }
 

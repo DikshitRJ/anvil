@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatReport } from '../../src/host/doctor';
+import { formatReport, OUTBOUND_HINT } from '../../src/host/doctor';
 
 describe('formatReport', () => {
   it('marks pass, warn and fail distinctly', () => {
@@ -11,5 +11,10 @@ describe('formatReport', () => {
     expect(out).toContain('✓ a: fine');
     expect(out).toContain('⚠ b: elsewhere\n    hint: use other window');
     expect(out).toContain('✗ c: bad\n    fix: repair');
+  });
+
+  it('includes the loopback allowlist hint in the fix text', () => {
+    const out = formatReport([{ name: 'm', ok: false, detail: 'bad', fix: `Run setup. ${OUTBOUND_HINT}` }]);
+    expect(out).toContain('OUTBOUND_URL_ALLOWED_HOSTS=\'["127.0.0.1","localhost"]\'');
   });
 });

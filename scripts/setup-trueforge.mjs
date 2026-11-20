@@ -34,6 +34,9 @@ const AGENT_FILES = ['agent/anvil-coder.json', 'agent/anvil-inline.json'];
 const ENV_PATTERN = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 const DEFAULT_MCP_URL = 'http://127.0.0.1:7801/mcp';
 
+const OUTBOUND_HINT = `hint: start TrueForge with OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' so it may call loopback addresses.`;
+const BLOCKED_PATTERN = /outbound|blocked|network.?polic|allowed.?hosts/i;
+
 const log = (msg) => console.log(msg);
 const warn = (msg) => console.warn(`warning: ${msg}`);
 
@@ -111,6 +114,7 @@ async function attempt(label, fn) {
     return true;
   } catch (err) {
     log(`  fail  ${label}: ${describe(err)}`);
+    if (BLOCKED_PATTERN.test(describe(err))) log(`        ${OUTBOUND_HINT}`);
     return false;
   }
 }
@@ -195,6 +199,7 @@ async function main() {
   const outcomes = [];
 
   log(`Registering with TrueForge at ${url}`);
+  log(`  ${OUTBOUND_HINT}`);
   outcomes.push(...(await registerProviders(client, resolveProviders(cfg))));
 
   const token = process.env.ANVIL_MCP_TOKEN;
