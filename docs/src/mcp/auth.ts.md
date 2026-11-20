@@ -1,22 +1,19 @@
 # `src/mcp/auth.ts`
 
 **Purpose**
-This file provides authentication checks for the local MCP bridge. It verifies bearer tokens and validates origin headers.
+Bearer-token and Origin checks for the local MCP bridge.
 
 **Exports**
-* checkBearer(header, token): boolean - function that compares a bearer token in a header against an expected token.
-* isAllowedOrigin(origin): boolean - function that checks if a request origin is from a local loopback address.
+- `checkBearer(header, token)`: boolean.
+- `isAllowedOrigin(origin)`: boolean.
 
 **Collaborators**
-* Imports: node:crypto
-* Exports used by: Not visible from this file.
+- Imports: `node:crypto` (`timingSafeEqual`).
+- Used by: `mcp/server.ts`.
 
 **Key behaviour and invariants**
-* `checkBearer` returns false if the header is missing or does not match the Bearer format.
-* `checkBearer` uses `timingSafeEqual` to prevent timing attacks.
-* `checkBearer` returns false if the token lengths do not match.
-* `isAllowedOrigin` returns true if the origin is undefined or an empty string.
-* `isAllowedOrigin` allows any origin if the client is not a browser.
+- `checkBearer` is false if the header or the expected token is missing/empty, or the header is not exactly `Bearer <value>`. Lengths are compared first (different length is false), then `timingSafeEqual` compares the bytes in constant time.
+- `isAllowedOrigin`: no `Origin` (undefined or empty, i.e. non-browser clients such as TrueForge) is allowed; otherwise the origin must match `http(s)://127.0.0.1|localhost|[::1]` with an optional port. This blocks other websites from calling the bridge through the browser.
 
 **Notes**
-* The `LOOPBACK_ORIGIN` regex allows `127.0.0.1`, `localhost`, and `[::1]`.
+- The token is a per-install secret kept in VS Code secrets (see `extension.ts`).

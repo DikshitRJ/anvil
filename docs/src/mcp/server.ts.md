@@ -1,27 +1,24 @@
 # `src/mcp/server.ts`
 
 **Purpose**
-This file creates a stateless Model Context Protocol (MCP) server. It provides a secured HTTP listener to handle MCP requests.
+The MCP bridge: workspace contracts, a per-request stateless MCP server, and the secured HTTP listener that TrueForge connects to.
 
 **Exports**
-* DiagnosticInfo(path: string, line: number, severity: 'error' | 'warning' | 'info', message: string): interface - Defines the structure for diagnostic information.
-* WorkspaceHost(readonly root: string, readonly index: CodeIndex, readFile: (rel: string) => Promise<string | null>, listFiles: (dir?: string, glob?: string, limit?: number) => Promise<string[]>, diagnostics: (rel?: string) => Promise<DiagnosticInfo[]>, applyWrite: (rel: string, content: string, summary: string) => Promise<void>, runCommand: (command: string, opts: { cwd?: string; timeoutMs: number }) => Promise<{ exitCode: number | null; output: string; timedOut: boolean }>): interface - Defines the interface for workspace operations.
-* WriteGate(isRunActive: () => boolean, resolveWrite: (tool: 'edit_file' | 'write_file', args: Record<string, unknown>, current: string | null, proposed: string) => Promise<{ content: string | null; feedback: string }>, authorizeCommand: (args: Record<string, unknown>) => Promise<boolean>): interface - Defines the interface for write operations and command authorization.
-* createAnvilMcpServer(host: WorkspaceHost, gate: WriteGate): McpServer - function - Initializes and returns an MCP server instance with registered tools.
-* startBridge(opts: { host: WorkspaceHost; gate: WriteGate; port: number; token: string; bind?: string }): Promise<{ url: string; port: number; close: () => Promise<void> }> - function - Starts the HTTP server and returns the connection details.
+- `DiagnosticInfo`: `path`, `line`, `severity` (`error | warning | info`), `message`.
+- `WorkspaceHost`: `root`, `index`, `readFile`, `listFiles`, `diagnostics`, `applyWrite` (records into the active run), `runCommand`.
+- `WriteGate`: `isRunActive()`, `resolveWrite(tool, args, current, proposed)` (final content or `null` = rejected, plus feedback), `authorizeCommand(args)`.
+- `createAnvilMcpServer(host, gate)`: `McpServer` named `anvil-editor` with instructions, tools registered via `registerTools`.
+- `startBridge({host, gate, port, token, bind = '127.0.0.1'})`: resolves `{url, port, close()}` with url `http://127.0.0.1:<port>/mcp`.
 
 **Collaborators**
-* Imports: `node:http`, `@modelcontextprotocol/sdk/server/mcp.js`, `@modelcontextprotocol/sdk/server/streamableHttp.js`, `../core/context/codeIndex`, `./auth`, `./tools`.
-* Exports: Not visible from this file.
+- Imports: `node:http`, MCP SDK server and Streamable HTTP transport, `CodeIndex` (type), `./auth`, `./tools`.
+- Used by: `extension.ts`, `host/doctor.ts` (as a client), `host/runController.ts` (implements `WriteGate`).
 
 **Key behaviour and invariants**
-* The server only accepts POST requests on the `/mcp` path.
-* The server rejects requests with a body size larger than 1,048,576 bytes.
-* The server requires a valid Bearer token for authorization.
-* The server checks the `Origin` header against an allowed list.
-* The `close` function destroys all active sockets and shuts down the HTTP server.
-* The server returns a 404 status for any path other than `/mcp`.
+- Request checks, in order: path must be `/mcp` (else 404); method must be POST (405, `Allow: POST`); `Origin` must be loopback or absent (403); valid bearer token (401); body at most 1 MiB (413); valid JSON (400). Failures return JSON-RPC style errors; unexpected errors give 500.
+- Stateless: each POST builds a fresh MCP server and transport (no session id, JSON responses) and tears them down when the response closes.
+- Binds to loopback only. If the port is taken, startup fails with "Port N is in use - change the anvil.mcpPort setting" (the extension detects this as `elsewhere`).
+- `close()` destroys all open sockets so the port frees immediately on deactivation.
 
 **Notes**
-* The `listen` function throws a specific error if the port is already in use.
-* The `resolveWrite` method falls back to an interactive review if the ledger fails.
+- Tools themselves live in `mcp/tools.ts`; this file only transports and authenticates.

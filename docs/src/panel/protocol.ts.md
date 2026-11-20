@@ -1,22 +1,19 @@
 # `src/panel/protocol.ts`
 
 **Purpose**
-This file defines the data structures for communication between the host and the webview. It ensures both sides use the same message formats.
+Message types exchanged between the extension host and the panel webview, so both sides share one contract. Types only.
 
 **Exports**
-* HostToWebview: type - Defines the structure of messages sent from the host to the webview.
-* WebviewToHost: type - Defines the structure of messages sent from the webview to the host.
+- `HostToWebview` (union by `type`): `init` (models, activeModel, trueforgeUrl), `health` (trueforge, bridge, indexedFiles), `runStarted`, `context` (items, budget, used, dropped count), `text` (full content so far, idempotent), `tool` (call with summary, status, optional result), `thread`, `approval` (kind `edit` or `command`), `approvalResolved`, `modelSwitch`, `notice` (level, message, optional actions and runId), `runFinished` (status done/cancelled/error, model, optional error, sessionId, metrics), `changes` (`{seq, runId, path, summary, at}[]`), `mentionResults`.
+- `WebviewToHost` (union by `type`): `ready`, `send`, `cancel`, `newChat`, `approve` (id, allow, optional reason), `mentionQuery`, `openFile` (path, optional line), `openSession`, `undoChange` (seq), `revertRun` (runId), `doctor`, `notice-action`.
 
 **Collaborators**
-* Imports: Not visible from this file.
-* Exports: Not visible from this file.
+- Imports: none.
+- Used by: `panelProvider.ts`, `messageQueue.ts`, `runController.ts`, `approvalFlow.ts`, `panelEvents.ts`, `extension.ts`, webview `state.ts`.
 
 **Key behaviour and invariants**
-* Messages use a `type` field to distinguish between different actions.
-* `HostToWebview` includes types for initialization, health checks, run status, text content, tool calls, and approvals.
-* `WebviewToHost` includes types for user actions like sending text, canceling, and opening files.
-* The `changes` type in `HostToWebview` uses a `seq` number to track order.
+- `text` messages are full snapshots, so the queue and webview may drop older ones. Most run messages carry `runId` so the webview can ignore stale runs; `init`, `health`, `changes` and `mentionResults` do not.
+- Status and outcome fields are plain strings, not enums, except where noted.
 
 **Notes**
-* Some fields in `HostToWebview` are optional, such as `runId` in the `notice` type.
-* The `mentionResults` type supports both `file` and `symbol` kinds.
+- Change `seq` is the checkpoint sequence number used by `undoChange`.
