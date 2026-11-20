@@ -159,19 +159,39 @@
         "command": "anvil.cancel",
         "key": "escape",
         "when": "anvil.running"
+      },
+      {
+        "command": "anvil.review.acceptHunk",
+        "key": "alt+y",
+        "when": "anvil.reviewing"
+      },
+      {
+        "command": "anvil.review.rejectHunk",
+        "key": "alt+n",
+        "when": "anvil.reviewing"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "anvil.review.acceptAll",
+          "command": "anvil.review.acceptHunk",
           "when": "resourceScheme == anvil-proposed",
           "group": "navigation@1"
         },
         {
-          "command": "anvil.review.rejectAll",
+          "command": "anvil.review.rejectHunk",
           "when": "resourceScheme == anvil-proposed",
           "group": "navigation@2"
+        },
+        {
+          "command": "anvil.review.acceptAll",
+          "when": "resourceScheme == anvil-proposed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "anvil.review.rejectAll",
+          "when": "resourceScheme == anvil-proposed",
+          "group": "navigation@4"
         }
       ],
       "editor/context": [
@@ -237,6 +257,9 @@
           "description": "Timeout in seconds for run_command."
         }
       }
+    },
+    "configurationDefaults": {
+      "diffEditor.codeLens": true
     }
   }
 }

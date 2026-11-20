@@ -195,7 +195,7 @@ How to read it:
 1. Select code. With no selection, Anvil targets the function or class around the cursor.
 2. Press `Ctrl+Alt+E` (`Cmd+Alt+E` on macOS), or choose **Anvil: Inline Edit Selection** from the editor context menu.
 3. Type the instruction. A diff opens against the file and updates as tokens arrive.
-4. Review the hunks. A CodeLens above each hunk offers **Accept** and **Reject**. **Accept all** and **Reject all** sit at the top. Click a decided hunk's CodeLens to change that decision. Closing the diff tab rejects any undecided hunks.
+4. Review the hunks. A CodeLens above each hunk offers **Accept** and **Reject** (Anvil enables `diffEditor.codeLens` by default so the lenses show in the diff editor). The diff's title bar has check and cross buttons for the hunk at the cursor, plus **Accept all** and **Reject all**. While reviewing, `Alt+Y` accepts and `Alt+N` rejects the hunk at the cursor. Click a decided hunk's CodeLens to change that decision. Closing the diff tab rejects any undecided hunks.
 5. The accepted hunks are written to the file and recorded in the timeline. Native undo also works for the open document.
 
 ### Agent mode
