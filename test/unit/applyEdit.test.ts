@@ -82,3 +82,18 @@ describe('literal replacement payloads', () => {
     expect(rep('before a.*[b] after', 'a.*[b]', 'done')).toBe('before done after');
   });
 });
+
+describe('fuzzy indentation boundaries', () => {
+  it('preserves tab-indented context while adding relative indentation', () => {
+    expect(rep('outer\n\told\n\tvalue\nend', 'old\nvalue', 'new\n  nested')).toBe('outer\n\tnew\n\t  nested\nend');
+  });
+  it('removes excess indentation without removing replacement content', () => {
+    expect(rep('  old\n  value', '    old\n    value', '    new\n      nested')).toBe('  new\n    nested');
+  });
+  it('refuses ambiguous fuzzy replacements even when replace-all is requested', () => {
+    expect(code(() => rep('  a\n  b\n    a\n    b', 'a\nb', 'x', true))).toBe('AMBIGUOUS');
+  });
+  it('rejects blank-only fuzzy needles instead of inventing a match', () => {
+    expect(code(() => rep('content', '\n \n', 'replacement'))).toBe('NOT_FOUND');
+  });
+});
