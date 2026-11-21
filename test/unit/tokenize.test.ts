@@ -23,3 +23,18 @@ describe('tokenize', () => {
     expect(tokenize('src/flask/cli.py: run()')).toEqual(['src', 'flask', 'cli', 'py', 'run']);
   });
 });
+
+describe('identifier retrieval vocabulary', () => {
+  it('keeps acronym boundaries searchable without dropping the full identifier', () => {
+    expect(tokenize('HTTPServer')).toEqual(['httpserver', 'http', 'server']);
+    expect(tokenize('parseURLValue')).toEqual(['parseurlvalue', 'parse', 'url', 'value']);
+  });
+  it('strips private-name padding and retains meaningful identifier parts', () => {
+    expect(tokenize('__load_config__')).toEqual(['load_config', 'load', 'config']);
+    expect(tokenize('version2Handler')).toEqual(['version2handler', 'version2', 'handler']);
+  });
+  it('handles empty and punctuation-only queries without emitting empty tokens', () => {
+    expect(tokenize('')).toEqual([]);
+    expect(tokenize('___ / : () 12345')).toEqual([]);
+  });
+});
