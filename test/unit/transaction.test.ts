@@ -225,3 +225,27 @@ describe('checkpoint storage failures', () => {
     expect(fs.files.has('a')).toBe(false);
   });
 });
+
+describe('run rollback retries', () => {
+  it('retries only conflicted paths after the user restores expected content', async () => {
+    const { fs, cp } = setup();
+    rec(cp, 'r', 'a', 'a0', 'a1');
+    rec(cp, 'r', 'b', 'b0', 'b1');
+    fs.files.set('a', 'user edit');
+    fs.files.set('b', 'b1');
+    expect(await cp.revertRun('r')).toEqual({ restored: ['b'], conflicts: ['a'] });
+    fs.files.set('a', 'a1');
+    const write = vi.spyOn(fs, 'write');
+    expect(await cp.revertRun('r')).toEqual({ restored: ['a'], conflicts: [] });
+    expect(write).toHaveBeenCalledExactlyOnceWith('a', 'a0');
+    expect(await cp.revertRun('r')).toEqual({ restored: [], conflicts: [] });
+  });
+  it('restores created files even with no visible undo capacity', async () => {
+    const { fs, cp } = setup(0);
+    rec(cp, 'r', 'new', null, 'content');
+    fs.files.set('new', 'content');
+    expect(cp.list()).toEqual([]);
+    expect(await cp.revertRun('r')).toEqual({ restored: ['new'], conflicts: [] });
+    expect(fs.files.has('new')).toBe(false);
+  });
+});
