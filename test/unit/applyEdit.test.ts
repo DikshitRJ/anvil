@@ -66,3 +66,19 @@ describe('replace fuzzy', () => {
     expect(rep('  a\r\n  b\r\n', 'a\nb', 'c\nd')).toBe('  c\r\n  d\r\n');
   });
 });
+
+describe('literal replacement payloads', () => {
+  it.each(['$&', '$1', '$`', "$'", '$$', '🙂', '\\path'])(
+    'preserves replacement %s in single and replace-all modes',
+    (replacement) => {
+      expect(rep('old tail', 'old', replacement)).toBe(`${replacement} tail`);
+      expect(rep('old old', 'old', replacement, true)).toBe(`${replacement} ${replacement}`);
+    },
+  );
+  it('does not recursively replace text introduced by the replacement', () => {
+    expect(rep('a a', 'a', 'aa', true)).toBe('aa aa');
+  });
+  it('treats regular-expression characters in the search string literally', () => {
+    expect(rep('before a.*[b] after', 'a.*[b]', 'done')).toBe('before done after');
+  });
+});
