@@ -96,3 +96,28 @@ describe('relativeInside', () => {
     expect(relativeInside('/w/p', '/w/p')).toBeUndefined();
   });
 });
+
+describe('review decision reversibility', () => {
+  it('recomputes preview and accepted counts when a decision changes', () => {
+    const model = new ReviewModel(orig, prop);
+    model.decideAll('accepted');
+    expect(model.acceptedCount).toBe(2);
+    model.decide(0, 'rejected');
+    expect(model.acceptedCount).toBe(1);
+    expect(model.preview()).toBe('a\nb\nc\nd\ne\ng\n');
+    model.decide(0, 'pending');
+    expect(model.decidedCount).toBe(1);
+    expect(model.allDecided).toBe(false);
+    expect(model.preview()).toBe(prop);
+    expect(model.outcome().content).toBe('a\nb\nc\nd\ne\ng\n');
+  });
+  it('resetting all decisions to pending does not accept any changes', () => {
+    const model = new ReviewModel(orig, prop);
+    model.decideAll('accepted');
+    model.decideAll('pending');
+    expect(model.outcome().content).toBeNull();
+    expect(model.acceptedCount).toBe(0);
+    expect(model.decidedCount).toBe(0);
+    expect(model.preview()).toBe(prop);
+  });
+});
