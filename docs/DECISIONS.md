@@ -234,3 +234,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-033 — Align file-list limits with retrieval limits
 **Context.** A negative list limit previously returned all but the last files through array slicing.
 **Decision.** Treat nonpositive limits as an empty request, consistent with search and grep.
+
+## D-034 — Keep base snapshots synchronized with undo
+**Context.** Undoing the last visible change left its old `lastAfter` in the run snapshot, causing cancellation to report a false conflict.
+**Decision.** Once no visible entries remain for a path, remove a fully restored base or update the expected content to the undo result while retaining the original base.

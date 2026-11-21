@@ -181,3 +181,23 @@ describe('revertRun with fully evicted paths', () => {
     expect(fs.files.get('a')).toBe('a0');
   });
 });
+
+describe('undo followed by run cancellation', () => {
+  it('does not report a conflict for a fully undone file', async () => {
+    const { fs, cp } = setup();
+    fs.files.set('a', 'new');
+    const change = rec(cp, 'r', 'a', 'old', 'new');
+    await cp.undo(change.seq);
+    expect(await cp.revertRun('r')).toEqual({ restored: [], conflicts: [] });
+    expect(fs.files.get('a')).toBe('old');
+  });
+  it('updates retained base expectations after undoing the last non-evicted change', async () => {
+    const { fs, cp } = setup(1);
+    rec(cp, 'r', 'a', 'original', 'middle');
+    const latest = rec(cp, 'r', 'a', 'middle', 'latest');
+    fs.files.set('a', 'latest');
+    await cp.undo(latest.seq);
+    expect(await cp.revertRun('r')).toEqual({ restored: ['a'], conflicts: [] });
+    expect(fs.files.get('a')).toBe('original');
+  });
+});

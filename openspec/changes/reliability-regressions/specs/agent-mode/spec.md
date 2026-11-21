@@ -10,3 +10,11 @@ Command execution SHALL decode stdout and stderr as independent UTF-8 streams an
 #### Scenario: Spawn failure followed by close
 - **WHEN** a child emits an error and subsequently closes
 - **THEN** command completion is reported once
+
+
+### Requirement: Consistent undo checkpoints
+Undo SHALL update retained run snapshots so later cancellation compares against the current expected file state.
+
+#### Scenario: Cancel after undo
+- **WHEN** the latest change is undone and the run is subsequently reverted
+- **THEN** already restored files do not produce false conflicts and evicted earlier changes still restore their original base

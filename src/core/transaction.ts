@@ -79,6 +79,13 @@ export class CheckpointStore {
       await this.restore(e.path, e.before);
       report.restored.push(e.path);
       this.drop(new Set([seq]));
+      const run = this.bases.get(e.runId);
+      const base = run?.get(e.path);
+      if (base && !this.forRun(e.runId).some((change) => change.path === e.path)) {
+        if (e.before === base.before) run?.delete(e.path);
+        else if (e.before !== null) base.lastAfter = e.before;
+        if (run?.size === 0) this.bases.delete(e.runId);
+      }
     }
     this.emit();
     return report;
