@@ -22,3 +22,21 @@ describe('file list result limits', () => {
     expect(filterFiles(files, 'src', '*.ts', 1)).toEqual(['src/a.ts']);
   });
 });
+
+describe('directory filtering boundaries', () => {
+  it('does not confuse sibling directory prefixes', () => {
+    const paths = ['src/a.ts', 'src-extra/b.ts', 'src2/c.ts'];
+    expect(filterFiles(paths, 'src')).toEqual(['src/a.ts']);
+  });
+  it('accepts dot-prefixed and windows-style directory separators', () => {
+    expect(filterFiles(files, './src/')).toEqual(filterFiles(files, 'src'));
+    expect(filterFiles(files, 'src\\deep')).toEqual(['src/deep/b.ts']);
+    expect(filterFiles(files, '.')).toEqual(files);
+  });
+  it('matches dotfiles and leaves caller ordering untouched', () => {
+    const paths = ['src/.hidden.ts', 'src/z.ts', 'src/a.ts'];
+    const original = [...paths];
+    expect(filterFiles(paths, 'src', '*.ts', 2)).toEqual(['src/.hidden.ts', 'src/z.ts']);
+    expect(paths).toEqual(original);
+  });
+});
