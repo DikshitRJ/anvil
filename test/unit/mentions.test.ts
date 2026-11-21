@@ -39,3 +39,19 @@ describe('parseMentions', () => {
     expect(r.mentions).toEqual([{ kind: 'file', value: 'docs/cli.rst', raw: '@docs/cli.rst' }]);
   });
 });
+
+describe('mention boundaries and resolution priority', () => {
+  it('prefers an exact root path over another file with the same basename', () => {
+    const result = parseMentions('@util.py', new Set(['util.py', 'nested/util.py']));
+    expect(result.mentions).toEqual([{ kind: 'file', value: 'util.py', raw: '@util.py' }]);
+  });
+  it('preserves punctuation and unresolved references in cleaned text', () => {
+    const result = parseMentions('(@helpers.py), @missing/path.py! and @#handler?', known);
+    expect(result.cleaned).toBe('(helpers.py), @missing/path.py! and handler?');
+    expect(result.mentions.map((m) => m.value)).toEqual(['src/flask/helpers.py', 'handler']);
+  });
+  it('does not consume embedded at signs or empty symbol markers', () => {
+    const text = 'prefix@helpers.py @# @';
+    expect(parseMentions(text, known)).toEqual({ mentions: [], cleaned: text });
+  });
+});
