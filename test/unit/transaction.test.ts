@@ -201,3 +201,27 @@ describe('undo followed by run cancellation', () => {
     expect(fs.files.get('a')).toBe('original');
   });
 });
+
+describe('checkpoint storage failures', () => {
+  it('retains undo history when restoration fails and allows retry', async () => {
+    const { fs, cp } = setup();
+    const change = rec(cp, 'r', 'a', 'before', 'after');
+    fs.files.set('a', 'after');
+    const write = vi.spyOn(fs, 'write').mockRejectedValueOnce(new Error('disk unavailable'));
+    await expect(cp.undo(change.seq)).rejects.toThrow('disk unavailable');
+    expect(cp.list()).toHaveLength(1);
+    expect(fs.files.get('a')).toBe('after');
+    await expect(cp.undo(change.seq)).resolves.toEqual({ restored: ['a'], conflicts: [] });
+    expect(write).toHaveBeenCalledTimes(2);
+  });
+  it('retains a created-file checkpoint when deletion fails', async () => {
+    const { fs, cp } = setup();
+    const change = rec(cp, 'r', 'a', null, 'created');
+    fs.files.set('a', 'created');
+    vi.spyOn(fs, 'remove').mockRejectedValueOnce(new Error('busy'));
+    await expect(cp.undo(change.seq)).rejects.toThrow('busy');
+    expect(cp.list()).toHaveLength(1);
+    await cp.undo(change.seq);
+    expect(fs.files.has('a')).toBe(false);
+  });
+});
