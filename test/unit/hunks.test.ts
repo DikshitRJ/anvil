@@ -127,3 +127,24 @@ describe('eol / trailing-newline-only changes (#44)', () => {
     for (const o of texts) for (const p of texts) roundTrip(o, p);
   });
 });
+
+describe('deterministic diff round trips', () => {
+  it('round-trips repeated lines, unicode, and boundary insertions across generated edits', () => {
+    let seed = 12345;
+    const next = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed;
+    };
+    const vocabulary = ['repeat', '', '🙂', 'café', '  indented', '終'];
+    for (const eol of ['\n', '\r\n']) {
+      for (let sample = 0; sample < 60; sample++) {
+        const before = Array.from({ length: next() % 16 }, () => vocabulary[next() % vocabulary.length]!);
+        const after = [...before];
+        const at = next() % (after.length + 1);
+        after.splice(at, next() % 3, vocabulary[next() % vocabulary.length]!);
+        const text = (lines: string[]) => lines.join(eol) + (lines.length ? eol : '');
+        roundTrip(text(before), text(after));
+      }
+    }
+  });
+});
