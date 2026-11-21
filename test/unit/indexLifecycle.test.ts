@@ -32,3 +32,28 @@ describe('incremental index lifecycle', () => {
     expect(index.repoMap()).toContain('(0 files)');
   });
 });
+
+describe('cached import graph invalidation', () => {
+  it('refreshes inbound and outbound neighbours when imports change', () => {
+    const index = new CodeIndex('/virtual');
+    index.updateFile('a.ts', 'import "./b";');
+    index.updateFile('b.ts', 'export const value = 1;');
+    index.updateFile('c.ts', 'export const value = 2;');
+    expect(index.neighbors('a.ts')).toEqual(['b.ts']);
+    expect(index.neighbors('b.ts')).toEqual(['a.ts']);
+    index.updateFile('a.ts', 'import "./c";');
+    expect(index.neighbors('a.ts')).toEqual(['c.ts']);
+    expect(index.neighbors('b.ts')).toEqual([]);
+    expect(index.neighbors('c.ts')).toEqual(['a.ts']);
+    index.removeFile('c.ts');
+    expect(index.neighbors('a.ts')).toEqual([]);
+  });
+  it('discovers imports when their previously missing target is added', () => {
+    const index = new CodeIndex('/virtual');
+    index.updateFile('a.ts', 'import "./later.js";');
+    expect(index.neighbors('a.ts')).toEqual([]);
+    index.updateFile('later.ts', 'export const ready = true;');
+    expect(index.neighbors('a.ts')).toEqual(['later.ts']);
+    expect(index.neighbors('later.ts')).toEqual(['a.ts']);
+  });
+});
