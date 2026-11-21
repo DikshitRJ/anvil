@@ -97,3 +97,17 @@ describe('fuzzy indentation boundaries', () => {
     expect(code(() => rep('content', '\n \n', 'replacement'))).toBe('NOT_FOUND');
   });
 });
+
+describe('replacement newline and deletion contracts', () => {
+  it.each(['\n', '\r\n'])('normalizes replacement newlines to the file convention %j', (eol) => {
+    const current = ['before', 'old', 'value', 'after', ''].join(eol);
+    expect(rep(current, 'old\r\nvalue', 'new\nline')).toBe(['before', 'new', 'line', 'after', ''].join(eol));
+  });
+  it('deletes a unique multiline region without leaving replacement blank lines', () => {
+    expect(rep('before\nold\nvalue\nafter\n', 'old\nvalue\n', '')).toBe('before\nafter\n');
+  });
+  it('supports an empty whole-file write while distinguishing an already-empty file', () => {
+    expect(simulateEdit(null, { kind: 'write', path: 'empty', content: '' })).toBe('');
+    expect(code(() => simulateEdit('', { kind: 'write', path: 'empty', content: '' }))).toBe('NO_CHANGE');
+  });
+});
