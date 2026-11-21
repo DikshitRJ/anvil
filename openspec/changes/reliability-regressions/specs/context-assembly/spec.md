@@ -18,3 +18,8 @@ Retrieval SHALL honor nonpositive result limits, use exact-fit line windows, pre
 #### Scenario: JavaScript extension in a TypeScript import
 - **WHEN** a source file imports a relative JavaScript path with a matching TypeScript source in the index
 - **THEN** import neighbours include that source
+
+
+#### Scenario: Empty file list limit
+- **WHEN** file listing is requested with a nonpositive limit
+- **THEN** it returns no files

@@ -230,3 +230,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-032 — Preserve class-level code between methods
 **Context.** Large-class splitting skipped declarations located between methods.
 **Decision.** Apply the existing significant-gap rule between every pair of method chunks, retaining nonoverlapping source ranges.
+
+## D-033 — Align file-list limits with retrieval limits
+**Context.** A negative list limit previously returned all but the last files through array slicing.
+**Decision.** Treat nonpositive limits as an empty request, consistent with search and grep.

@@ -18,3 +18,5 @@ Pure filter behind the `list_files` tool: directory prefix plus glob.
 
 **Notes**
 - Does no I/O and no path-escape checks; the caller supplies the file list.
+
+- A zero or negative limit returns no files, without invoking negative array slicing.

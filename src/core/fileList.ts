@@ -2,6 +2,7 @@
 import picomatch from 'picomatch';
 
 export function filterFiles(files: string[], dir = '', glob?: string, limit = 200): string[] {
+  if (limit <= 0) return [];
   const prefix = dir && dir !== '.' ? dir.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/?$/, '/') : '';
   const match = glob ? picomatch(glob, { dot: true, matchBase: !glob.includes('/') }) : () => true;
   return files.filter((f) => f.startsWith(prefix) && match(f)).slice(0, limit);

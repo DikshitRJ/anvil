@@ -13,3 +13,12 @@ describe('filterFiles', () => {
     expect(filterFiles(files, '', '**/*.md', 1)).toEqual(['src/c.md']);
   });
 });
+
+describe('file list result limits', () => {
+  it.each([0, -1, -10])('returns no files for limit %i', (limit) => {
+    expect(filterFiles(files, '', undefined, limit)).toEqual([]);
+  });
+  it('filters before applying the result limit', () => {
+    expect(filterFiles(files, 'src', '*.ts', 1)).toEqual(['src/a.ts']);
+  });
+});
