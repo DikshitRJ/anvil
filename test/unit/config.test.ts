@@ -44,3 +44,31 @@ describe('mergeConfig', () => {
     expect(mergeConfig({ mcpPort: NaN }).mcpPort).toBe(DEFAULT_CONFIG.mcpPort);
   });
 });
+
+describe('configuration value isolation', () => {
+  it('copies model lists so callers cannot mutate settings or defaults', () => {
+    const models = ['provider/model'];
+    const config = mergeConfig({ models });
+    models.push('other/model');
+    expect(config.models).toEqual(['provider/model']);
+    config.models.push('local/change');
+    expect(models).toEqual(['provider/model', 'other/model']);
+    const defaults = mergeConfig({});
+    defaults.models.push('test/model');
+    expect(DEFAULT_CONFIG.models).toEqual([]);
+  });
+  it.each([NaN, Infinity, -Infinity])('rejects nonfinite numeric settings %s', (value) => {
+    expect(
+      mergeConfig({
+        retriesPerModel: value,
+        stallTimeoutSec: value,
+        contextBudget: value,
+        mcpPort: value,
+        commandTimeoutSec: value,
+      }),
+    ).toEqual(DEFAULT_CONFIG);
+  });
+  it('rounds fractional values consistently before clamping', () => {
+    expect(mergeConfig({ retriesPerModel: 1.6, mcpPort: 7801.4 })).toMatchObject({ retriesPerModel: 2, mcpPort: 7801 });
+  });
+});
