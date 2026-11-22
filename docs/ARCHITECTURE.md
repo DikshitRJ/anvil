@@ -356,7 +356,8 @@ export type HostToWebview =
   | { type: 'approval'; runId: string; id: string; kind: 'edit' | 'command'; title: string; detail: string }
   | { type: 'approvalResolved'; runId: string; id: string; outcome: string }
   | { type: 'modelSwitch'; runId: string; from: string; to: string; reason: string }
-  | { type: 'notice'; runId?: string; level: 'info' | 'warn' | 'error'; message: string; actions?: string[] }
+  | { type: 'notice'; runId?: string; id?: string; level: 'info' | 'warn' | 'error'; message: string; actions?: string[] }   // no runId: global banner; same id replaces
+  | { type: 'chatReset' }   // New Chat: webview clears global notices
   | { type: 'runFinished'; runId: string; status: 'done' | 'cancelled' | 'error'; model: string; error?: string; sessionId?: string; metrics?: Record<string, number> }
   | { type: 'changes'; changes: { seq: number; runId: string; path: string; summary: string; at: number }[] }
   | { type: 'mentionResults'; query: string; items: { kind: 'file' | 'symbol'; label: string; detail: string; insert: string }[] };

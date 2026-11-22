@@ -19,7 +19,7 @@ Composition root of the Anvil VS Code extension: wires the code index, MCP bridg
 - Saved `file:` documents inside the workspace are reported to `run.trackSaved` (feeds recent files for context ranking).
 - `inlineSession` refuses to start with no `anvil.models` (offers "Open Settings") and otherwise opens a session with the inline agent.
 - Commands: `anvil.cancel` cancels an active inline edit first, otherwise the run; `newChat`, `undoLast`, `setup`, `doctor` map to controller methods; `openSession` opens `<trueforgeUrl>/sessions/<id>`, or says there is no session yet; `focusPanel` focuses the panel view.
-- `doctor` runs the checks, prints them to the "Anvil Doctor" channel, posts a notice and offers "Run setup" when a failing check is fixable by setup.
+- `doctor` runs the checks, prints them to the "Anvil Doctor" channel, posts a notice with `id: 'doctor'` (so a re-run replaces the previous Doctor banner instead of stacking) and offers "Run setup" when a failing check is fixable by setup.
 
 **Notes**
 - The webview view provider is registered with `retainContextWhenHidden`.

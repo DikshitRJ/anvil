@@ -20,7 +20,7 @@ Renders `PanelState` into the DOM: builds the panel skeleton and patches keyed e
 - Approvals: a pending command shows the command with Allow/Deny buttons; a pending edit just says to review the hunks in the editor; once resolved it shows the outcome text.
 - Footer shows status (done / cancelled / error with message), model, tokens and cost if present, and "Open in TrueForge" when a session id exists. "Applied changes" lists changes grouped by run with per-change Undo and a per-run "Revert run".
 - `recordToggle` keeps user open/close choices for `<details>` (by `data-dk`) across re-renders.
-- `render` updates the header (model chip, health dot with tooltip), notices, transcript and changes, switches the button between Send and Stop according to `running`, and scrolls to the bottom only if the user was already within 60 px of it.
+- `render` updates the header (model chip, health dot with tooltip), global notices (each with a dismiss `×` button, `data-action="dismiss-notice"` carrying the notice key in `data-notice`; built by `globalNoticeHtml`), transcript and changes, switches the button between Send and Stop according to `running`, and scrolls to the bottom only if the user was already within 60 px of it.
 
 **Notes**
 - `toolGlyph` picks an icon by regex on the tool name (search, read, edit, command) and falls back to a gear.

@@ -142,7 +142,7 @@ async function boot(context: vscode.ExtensionContext, root: string, log: (m: str
     const summary = bad.length
       ? `Anvil Doctor: ${bad.length} problem(s) — ${bad.map((c) => c.name).join(', ')}`
       : 'Anvil Doctor: all checks passed';
-    panel.post({ type: 'notice', level: bad.length ? 'warn' : 'info', message: summary });
+    panel.post({ type: 'notice', id: 'doctor', level: bad.length ? 'warn' : 'info', message: summary });
     const needsSetup = bad.some((c) => c.setup);
     const pick = bad.length
       ? await vscode.window.showWarningMessage(summary, ...(needsSetup ? ['Run setup'] : []))

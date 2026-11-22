@@ -1,7 +1,7 @@
 // Webview entry: wires host messages -> reducer -> render, and DOM events -> typed WebviewToHost messages.
 import type { HostToWebview, WebviewToHost } from '../src/panel/protocol';
 import { type Refs, mount, recordToggle, render } from './render';
-import { type PanelState, initialState, reduce } from './state';
+import { type PanelState, dismissNotice, hydrate, persistable, reduce } from './state';
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -12,22 +12,14 @@ declare function acquireVsCodeApi(): VsCodeApi;
 
 const vscode = acquireVsCodeApi();
 const post = (m: WebviewToHost): void => vscode.postMessage(m);
-const MAX_RUNS = 20;
 
-function restore(): PanelState {
-  const saved = vscode.getState() as { state?: PanelState } | undefined;
-  const s = saved?.state;
-  if (!s || !Array.isArray(s.runs)) return initialState();
-  return { ...initialState(), ...s, running: false, mentions: undefined };
-}
-
-let state = restore();
+let state = hydrate(vscode.getState());
 const refs: Refs = mount(document.getElementById('app') as HTMLElement);
 let mentionTimer: ReturnType<typeof setTimeout> | undefined;
 let mentionIndex = 0;
 
 function persist(): void {
-  vscode.setState({ state: { ...state, runs: state.runs.slice(-MAX_RUNS) } });
+  vscode.setState({ state: persistable(state) });
 }
 
 function update(next: PanelState): void {
@@ -166,6 +158,7 @@ const ACTIONS: Record<string, Handler> = {
   undoChange: (el) => ({ type: 'undoChange', seq: Number(el.dataset.seq) }),
   revertRun: (el) => ({ type: 'revertRun', runId: el.dataset.run ?? '' }),
   'notice-action': (el) => ({ type: 'notice-action', action: el.dataset.value ?? '' }),
+  'dismiss-notice': (el) => (update(dismissNotice(state, el.dataset.notice ?? '')), undefined),
 };
 
 refs.root.addEventListener('click', (e) => {

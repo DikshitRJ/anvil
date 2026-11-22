@@ -360,6 +360,7 @@ export class RunController implements WriteGate {
     this.session?.dispose();
     this.session = undefined;
     this.flow.clear();
+    this.d.post({ type: 'chatReset' });
   }
 
   /** Called when settings change: drop the chat session so the next run uses the new model chain / URL. */

@@ -21,7 +21,18 @@ export type HostToWebview =
   | { type: 'approval'; runId: string; id: string; kind: 'edit' | 'command'; title: string; detail: string }
   | { type: 'approvalResolved'; runId: string; id: string; outcome: string }
   | { type: 'modelSwitch'; runId: string; from: string; to: string; reason: string }
-  | { type: 'notice'; runId?: string; level: 'info' | 'warn' | 'error'; message: string; actions?: string[] }
+  // Without runId the notice is a global banner. `id` names a singleton banner (e.g. 'doctor'): a newer notice with the
+  // same id replaces the older one instead of stacking.
+  | {
+      type: 'notice';
+      runId?: string;
+      id?: string;
+      level: 'info' | 'warn' | 'error';
+      message: string;
+      actions?: string[];
+    }
+  // The chat was reset (New Chat): transient global notices belong to the old chat and are cleared.
+  | { type: 'chatReset' }
   | {
       type: 'runFinished';
       runId: string;
