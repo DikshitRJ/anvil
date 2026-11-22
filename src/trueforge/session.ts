@@ -181,6 +181,7 @@ export class AnvilSession {
 
   private async attempt(input: string, hooks: RunHooks): Promise<Outcome> {
     this.reducer.reset();
+    this.compacting = false;
     this.received = false;
     this.controller = new AbortController();
     try {

@@ -238,3 +238,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-034 — Keep base snapshots synchronized with undo
 **Context.** Undoing the last visible change left its old `lastAfter` in the run snapshot, causing cancellation to report a false conflict.
 **Decision.** Once no visible entries remain for a path, remove a fully restored base or update the expected content to the undo result while retaining the original base.
+
+## D-035 — Scope compaction suppression to one attempt
+**Context.** Cancelling during compaction retained a busy flag and suppressed later stall detection indefinitely.
+**Decision.** Reset compaction state at the beginning of every attempt.

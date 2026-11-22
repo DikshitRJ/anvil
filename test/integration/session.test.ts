@@ -335,3 +335,44 @@ describe('AnvilSession', () => {
     expect(mock.find('GET', '/subscribe').length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('compaction state across runs', () => {
+  it('restores stall detection after cancelling a compacting run', async () => {
+    mock.push({
+      steps: [
+        emit(E.created()),
+        emit({
+          type: 'thread.context_compaction_started',
+          id: 'compact',
+          thread_id: 'main',
+          created_at: new Date().toISOString(),
+          trigger: { type: 'context_threshold_exceeded', context_tokens: 10, threshold_tokens: 9 },
+        }),
+        'hang',
+      ],
+    });
+    const s = make(['a'], 100);
+    let compacting = false;
+    const first = s.run('first', {
+      ...allow,
+      onEvent: (event) => {
+        if ((event as { type: string }).type === 'thread.context_compaction_started') compacting = true;
+      },
+    });
+    await vi.waitFor(() => expect(compacting).toBe(true));
+    await s.cancel();
+    expect((await first).status).toBe('cancelled');
+    mock.push({ steps: [emit(E.created()), 'hang'] }, simple('recovered'));
+    let result: Awaited<ReturnType<AnvilSession['run']>> | undefined;
+    const second = s.run('second', allow).then((value) => {
+      result = value;
+    });
+    try {
+      await vi.waitFor(() => expect(result?.status).toBe('done'), { timeout: 1500 });
+      expect(result?.output).toBe('recovered');
+    } finally {
+      await s.cancel();
+      await second;
+    }
+  });
+});
