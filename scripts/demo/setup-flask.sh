@@ -5,7 +5,7 @@
 #   target-dir defaults to $HOME/anvil-demo/flask
 #
 # Clones Flask if needed, checks out tag 3.1.3 (commit 22d92470), creates a
-# .venv inside the target and installs Flask in editable mode with pytest.
+# .venv inside the target and installs Flask with dotenv and a compatible pytest version.
 set -euo pipefail
 
 TARGET="${1:-$HOME/anvil-demo/flask}"
@@ -31,7 +31,8 @@ echo "Flask checked out at $FLASK_TAG (${HEAD_SHA:0:8})"
 if [ ! -d "$TARGET/.venv" ]; then
   python3 -m venv "$TARGET/.venv"
 fi
-(cd "$TARGET" && .venv/bin/python -m pip install --quiet -e . pytest)
+# Flask 3.1.3 imports pytest internals removed in 9.2. Use its locked version.
+(cd "$TARGET" && .venv/bin/python -m pip install --quiet -e ".[dotenv]" "pytest==9.0.2")
 
 cat <<EOF
 

@@ -290,3 +290,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-047 — Compare visible tool results rather than their lengths
 **Context.** Result-length signatures suppressed changed previews when old and new text had equal length.
 **Decision.** Compare a structured signature of the actual rendered fields, capped to the visible preview size.
+
+## D-048 — Pin the Flask demo test runner
+**Context.** A clean live-demo setup installed pytest 9.2.0, which cannot collect Flask 3.1.3 CLI tests.
+**Decision.** Use pytest 9.0.2 from the pinned Flask lockfile and install the dotenv extra. This scopes compatibility to the demo environment.

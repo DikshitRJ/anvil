@@ -115,3 +115,6 @@ Chronological log of major actions, phase outcomes and notable events. Times are
 - Added deterministic regressions alongside the fixes and expanded edit, retrieval, and review contract coverage.
 - Specification: `openspec/changes/reliability-regressions`; decisions D-026 through D-047.
 - File autocomplete now inserts escaped quoted mentions; tool cards refresh when same-length result text changes.
+
+## 2026-11-22 — Live demo setup compatibility
+Installed Anvil in VS Code and connected the local TrueForge MCP bridge. Found baseline Flask CLI collection failure with pytest 9.2.0. Pinning pytest 9.0.2 and installing dotenv restored all 58 baseline CLI tests on Python 3.14. Live tasks A/B/C remain unverified at this stage.
