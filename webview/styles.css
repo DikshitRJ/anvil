@@ -300,6 +300,11 @@ pre code {
 .notice.lvl-error {
   border-left-color: var(--vscode-charts-red);
 }
+.notice .dismiss {
+  margin-left: auto;
+  padding: 0 6px;
+  line-height: 1.2;
+}
 .notice .reason {
   color: var(--vscode-descriptionForeground);
 }

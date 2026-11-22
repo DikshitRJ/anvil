@@ -4,7 +4,7 @@
 Message types exchanged between the extension host and the panel webview, so both sides share one contract. Types only.
 
 **Exports**
-- `HostToWebview` (union by `type`): `init` (models, activeModel, trueforgeUrl), `health` (trueforge, bridge, indexedFiles), `runStarted`, `context` (items, budget, used, dropped count), `text` (full content so far, idempotent), `tool` (call with summary, status, optional result), `thread`, `approval` (kind `edit` or `command`), `approvalResolved`, `modelSwitch`, `notice` (level, message, optional actions and runId), `runFinished` (status done/cancelled/error, model, optional error, sessionId, metrics), `changes` (`{seq, runId, path, summary, at}[]`), `mentionResults`.
+- `HostToWebview` (union by `type`): `init` (models, activeModel, trueforgeUrl), `health` (trueforge, bridge, indexedFiles), `runStarted`, `context` (items, budget, used, dropped count), `text` (full content so far, idempotent), `tool` (call with summary, status, optional result), `thread`, `approval` (kind `edit` or `command`), `approvalResolved`, `modelSwitch`, `notice` (level, message, optional actions and runId; optional `id` names a singleton global banner that a newer notice with the same id replaces), `chatReset` (New Chat: the webview clears global notices), `runFinished` (status done/cancelled/error, model, optional error, sessionId, metrics), `changes` (`{seq, runId, path, summary, at}[]`), `mentionResults`.
 - `WebviewToHost` (union by `type`): `ready`, `send`, `cancel`, `newChat`, `approve` (id, allow, optional reason), `mentionQuery`, `openFile` (path, optional line), `openSession`, `undoChange` (seq), `revertRun` (runId), `doctor`, `notice-action`.
 
 **Collaborators**

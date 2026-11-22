@@ -46,6 +46,8 @@ export interface Run {
 }
 export interface GlobalNotice {
   key: string;
+  /** Singleton id from the host; a newer notice with the same id replaces this one. */
+  id?: string;
   level: 'info' | 'warn' | 'error';
   message: string;
   actions: string[];
@@ -74,6 +76,38 @@ export function initialState(): PanelState {
     notices: [],
     noticeSeq: 0,
   };
+}
+
+/** Runs kept in persisted webview state. */
+export const MAX_RUNS = 20;
+/** Global banners kept on screen at once; older ones are dropped first. */
+export const MAX_NOTICES = 5;
+
+/**
+ * Rebuild state from what vscode.getState() returned. Global notices are transient (they describe the host at the
+ * moment they were posted), so they are never rehydrated; the host re-posts anything still relevant.
+ */
+export function hydrate(saved: unknown): PanelState {
+  const s = (saved as { state?: PanelState } | undefined)?.state;
+  if (!s || !Array.isArray(s.runs)) return initialState();
+  return { ...initialState(), ...s, running: false, mentions: undefined, notices: [] };
+}
+
+/** The slice of state written to vscode.setState(): recent runs only, and no transient global notices. */
+export function persistable(s: PanelState): PanelState {
+  return { ...s, runs: s.runs.slice(-MAX_RUNS), notices: [] };
+}
+
+/** Remove the global notice with `key` (the user dismissed it). */
+export function dismissNotice(s: PanelState, key: string): PanelState {
+  const notices = s.notices.filter((n) => n.key !== key);
+  return notices.length === s.notices.length ? s : { ...s, notices };
+}
+
+/** Same banner: same singleton id, or (when neither has an id) identical level, message and actions. */
+function sameNotice(a: GlobalNotice, b: GlobalNotice): boolean {
+  if (a.id !== undefined || b.id !== undefined) return a.id === b.id;
+  return a.level === b.level && a.message === b.message && a.actions.join('\n') === b.actions.join('\n');
 }
 
 function updateRun(state: PanelState, runId: string, fn: (r: Run) => Run): PanelState {
@@ -132,8 +166,16 @@ function onNotice(s: PanelState, m: Msg<'notice'>): PanelState {
   const seq = s.noticeSeq + 1;
   const actions = m.actions ?? [];
   if (!m.runId) {
-    const notice: GlobalNotice = { key: `n:${seq}`, level: m.level, message: m.message, actions };
-    return { ...s, noticeSeq: seq, notices: [...s.notices, notice] };
+    const notice: GlobalNotice = {
+      key: `n:${seq}`,
+      ...(m.id ? { id: m.id } : {}),
+      level: m.level,
+      message: m.message,
+      actions,
+    };
+    // Replace an earlier copy of the same banner (moving it to the end) rather than stacking duplicates.
+    const notices = [...s.notices.filter((n) => !sameNotice(n, notice)), notice].slice(-MAX_NOTICES);
+    return { ...s, noticeSeq: seq, notices };
   }
   const entry: Entry = { kind: 'notice', key: `n:${seq}`, threadId: '', level: m.level, message: m.message, actions };
   return { ...updateRun(s, m.runId, (r) => ({ ...r, entries: [...r.entries, entry] })), noticeSeq: seq };
@@ -177,6 +219,8 @@ export function reduce(state: PanelState, msg: HostToWebview): PanelState {
       return onModelSwitch(state, msg);
     case 'notice':
       return onNotice(state, msg);
+    case 'chatReset':
+      return { ...state, notices: [] };
     case 'runFinished':
       return onRunFinished(state, msg);
     case 'changes':

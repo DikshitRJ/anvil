@@ -53,10 +53,16 @@ export function approvalHtml(e: Extract<Entry, { kind: 'approval' }>): string {
 <div class="row">${btn('Allow', `data-action="approve" data-id="${id}" data-allow="1"`, 'btn primary')}${btn('Deny', `data-action="approve" data-id="${id}" data-allow="0"`, 'btn secondary')}</div></div>`;
 }
 
-function noticeHtml(level: string, message: string, actions: string[]): string {
+function noticeHtml(level: string, message: string, actions: string[], dismissKey?: string): string {
   const acts = actions.map((a) => btn(a, `data-action="notice-action" data-value="${esc(a)}"`, 'btn small')).join('');
-  return `<div class="notice lvl-${esc(level)}" role="status"><span>${esc(message)}</span>${acts}</div>`;
+  const close = dismissKey
+    ? `<button type="button" class="icon dismiss" data-action="dismiss-notice" data-notice="${esc(dismissKey)}" aria-label="Dismiss notice" title="Dismiss">×</button>`
+    : '';
+  return `<div class="notice lvl-${esc(level)}" role="status"><span>${esc(message)}</span>${acts}${close}</div>`;
 }
+
+/** A global banner in #notices: like a run notice, plus a dismiss (×) button keyed by the notice. */
+export const globalNoticeHtml = (n: GlobalNotice): string => noticeHtml(n.level, n.message, n.actions, n.key);
 
 export function entryHtml(e: Entry): string {
   switch (e.kind) {
@@ -267,7 +273,7 @@ function renderNotices(refs: Refs, notices: GlobalNotice[]): void {
   const items = notices.map((n) => ({
     key: n.key,
     sig: JSON.stringify(n),
-    html: noticeHtml(n.level, n.message, n.actions),
+    html: globalNoticeHtml(n),
   }));
   syncChildren(refs.notices, items);
 }

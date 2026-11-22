@@ -34,3 +34,19 @@ Follow-up messages SHALL be sent as new turns in the same TrueForge session unti
 #### Scenario: Follow-up
 - **WHEN** the user sends a second message
 - **THEN** it is created as a turn chained to the previous one in the same session
+
+### Requirement: Panel notices
+Global panel notices SHALL be dismissible, SHALL NOT stack duplicates, and SHALL NOT outlive the chat or the webview
+that showed them.
+
+#### Scenario: Repeated Doctor runs
+- **WHEN** the user runs Doctor several times
+- **THEN** the panel shows a single Doctor banner holding the latest result
+
+#### Scenario: Dismiss a notice
+- **WHEN** the user clicks the `×` on a global notice
+- **THEN** that notice is removed and the others stay
+
+#### Scenario: New chat or reload
+- **WHEN** the user starts a new chat, or the panel webview is reloaded
+- **THEN** no earlier global notice is shown
