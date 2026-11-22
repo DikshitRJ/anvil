@@ -26,3 +26,5 @@ Checkpoint store that records every applied edit so a single change or a whole r
 - Conflicts mean the user edited the file after Anvil; nothing is overwritten unless `force` is set.
 
 - When undo removes the last retained entry for a path, it updates the base snapshot expectation or removes an already-restored base. Later cancellation can still restore earlier evicted changes without a false conflict.
+
+- Every successful undo refreshes the retained expected content, even while older visible entries remain, so later history eviction cannot revive a stale expectation. The expectation can also represent a removed file.

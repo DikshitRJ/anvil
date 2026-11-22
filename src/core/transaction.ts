@@ -24,7 +24,7 @@ export class CheckpointStore {
   private entries: AppliedChange[] = [];
   private nextSeq = 1;
   // first `before` per path per run; survives undo-list eviction so revertRun restores the true base
-  private bases = new Map<string, Map<string, { before: string | null; lastAfter: string }>>();
+  private bases = new Map<string, Map<string, { before: string | null; lastAfter: string | null }>>();
   private listeners = new Set<() => void>();
 
   constructor(
@@ -81,9 +81,11 @@ export class CheckpointStore {
       this.drop(new Set([seq]));
       const run = this.bases.get(e.runId);
       const base = run?.get(e.path);
-      if (base && !this.forRun(e.runId).some((change) => change.path === e.path)) {
-        if (e.before === base.before) run?.delete(e.path);
-        else if (e.before !== null) base.lastAfter = e.before;
+      if (base) {
+        base.lastAfter = e.before;
+        if (e.before === base.before && !this.forRun(e.runId).some((change) => change.path === e.path)) {
+          run?.delete(e.path);
+        }
         if (run?.size === 0) this.bases.delete(e.runId);
       }
     }

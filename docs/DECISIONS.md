@@ -274,3 +274,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-043 — Quote file mentions containing spaces
 **Context.** Whitespace-delimited mention parsing could not pin indexed files whose paths contained spaces.
 **Decision.** Accept single- or double-quoted paths, resolve the full token, and preserve punctuation and quote characters in the cleaned prompt.
+
+## D-044 — Refresh retained expectations on every undo
+**Context.** Updating a base only after the final visible undo entry was removed still failed if older entries were evicted later.
+**Decision.** Record the restored content after every successful undo, including null for deletion. Remove a fully restored base only when its visible history is exhausted.

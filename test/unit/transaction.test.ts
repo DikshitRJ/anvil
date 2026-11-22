@@ -249,3 +249,18 @@ describe('run rollback retries', () => {
     expect(fs.files.has('new')).toBe(false);
   });
 });
+
+describe('undo expectations surviving later eviction', () => {
+  it('keeps the latest restored content as the base expectation after remaining entries are evicted', async () => {
+    const { fs, cp } = setup(2);
+    rec(cp, 'r', 'a', 'original', 'middle');
+    const latest = rec(cp, 'r', 'a', 'middle', 'latest');
+    fs.files.set('a', 'latest');
+    await cp.undo(latest.seq);
+    rec(cp, 'other', 'b', null, 'b');
+    rec(cp, 'other', 'c', null, 'c');
+    expect(cp.forRun('r')).toEqual([]);
+    expect(await cp.revertRun('r')).toEqual({ restored: ['a'], conflicts: [] });
+    expect(fs.files.get('a')).toBe('original');
+  });
+});
