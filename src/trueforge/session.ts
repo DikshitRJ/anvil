@@ -105,7 +105,6 @@ export class AnvilSession {
   private async runLoop(input: string, hooks: RunHooks): Promise<RunResult> {
     const { relay } = this.opts;
     relay.reset();
-    await this.syncModel(relay.current());
     let retries = 0;
     let text = input;
     for (;;) {
@@ -134,11 +133,6 @@ export class AnvilSession {
       if (this.cancelled) return { status: 'cancelled', ...this.ids() };
       text = RETRY_NOTE + input;
     }
-  }
-
-  // best effort: put the session back on the relay's model (e.g. after a fallback in an earlier run)
-  private async syncModel(model: string): Promise<void> {
-    if (this.id && this.specModel !== model) await this.swapModel(model);
   }
 
   private ids(): { model: string; sessionId?: string } {
@@ -185,6 +179,10 @@ export class AnvilSession {
     this.received = false;
     this.controller = new AbortController();
     try {
+      if (this.id && this.specModel !== this.opts.relay.current()) {
+        const error = await this.swapModel(this.opts.relay.current());
+        if (error) return this.failTurn(error);
+      }
       const sid = await this.ensureSession();
       const turn = this.opts.client.sessions.createTurnStream(
         sid,

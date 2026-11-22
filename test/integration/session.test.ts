@@ -376,3 +376,34 @@ describe('compaction state across runs', () => {
     }
   });
 });
+
+describe('model synchronization failures', () => {
+  it('retries a failed switch before starting a turn with the requested model', async () => {
+    mock.failNext.patch = 1;
+    mock.push({ steps: [emit(E.created()), emit(E.error('Invalid API key (401)'))] }, simple('on b'));
+    const result = await make(['a', 'b']).run('task', allow);
+    expect(result).toMatchObject({ status: 'done', model: 'b' });
+    const patches = mock.find('PATCH', '/sessions/');
+    expect(patches).toHaveLength(2);
+    expect(patches.every((request) => request.body.agent.spec.model.name === 'b')).toBe(true);
+    const requests = mock.requests.map((request) => `${request.method} ${request.path.split('/').at(-1)}`);
+    expect(requests.lastIndexOf('PATCH sess_1')).toBeLessThan(requests.lastIndexOf('POST turns'));
+  });
+  it('retries primary-model synchronization on a follow-up instead of silently using the fallback', async () => {
+    mock.push(
+      { steps: [emit(E.created()), emit(E.error('Invalid API key (401)'))] },
+      simple('fallback'),
+      simple('primary'),
+    );
+    const s = make(['a', 'b']);
+    await s.run('first', allow);
+    mock.failNext.patch = 1;
+    const result = await s.run('follow-up', allow);
+    expect(result).toMatchObject({ status: 'done', model: 'a' });
+    expect(mock.find('PATCH', '/sessions/').map((request) => request.body.agent.spec.model.name)).toEqual([
+      'b',
+      'a',
+      'a',
+    ]);
+  });
+});

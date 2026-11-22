@@ -28,3 +28,5 @@ Runs one user request as a TrueForge turn: streams events, answers approval and 
 - The stall watchdog is paused while the host reports busy (`isBusy`) and between `thread.context_compaction_started` and `thread.context_compaction_finished`, because TrueForge emits no events while it compacts history.
 
 - Every new attempt resets compaction state so cancellation during compaction cannot disable the stall watchdog for later turns.
+
+- Before starting any turn, the session model must match the relay model. Failed synchronization enters normal retry/fallback handling; no turn runs under the stale specification.

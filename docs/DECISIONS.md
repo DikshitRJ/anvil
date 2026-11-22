@@ -242,3 +242,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-035 — Scope compaction suppression to one attempt
 **Context.** Cancelling during compaction retained a busy flag and suppressed later stall detection indefinitely.
 **Decision.** Reset compaction state at the beginning of every attempt.
+
+## D-036 — Synchronize the model before every attempt
+**Context.** Failed model updates could be retried by starting a turn under the previous model while reporting the requested model.
+**Decision.** Perform required synchronization inside each attempt; propagate update failures through the relay before creating a turn.
