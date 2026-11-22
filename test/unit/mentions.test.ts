@@ -55,3 +55,22 @@ describe('mention boundaries and resolution priority', () => {
     expect(parseMentions(text, known)).toEqual({ mentions: [], cleaned: text });
   });
 });
+
+describe('quoted file paths', () => {
+  const paths = new Set(['docs/setup guide.md', 'src/my module.ts', 'docs/alert!.md']);
+  it('pins double-quoted paths containing spaces and preserves punctuation', () => {
+    const result = parseMentions('read @"docs/setup guide.md", please', paths);
+    expect(result.mentions).toEqual([{ kind: 'file', value: 'docs/setup guide.md', raw: '@"docs/setup guide.md"' }]);
+    expect(result.cleaned).toBe('read "docs/setup guide.md", please');
+  });
+  it('supports single quotes without stripping punctuation inside a filename', () => {
+    expect(parseMentions('@\'src/my module.ts\' @"docs/alert!.md"', paths).mentions.map((m) => m.value)).toEqual([
+      'src/my module.ts',
+      'docs/alert!.md',
+    ]);
+  });
+  it('leaves unresolved quoted paths unchanged', () => {
+    const text = '@"missing file.ts"';
+    expect(parseMentions(text, paths)).toEqual({ mentions: [], cleaned: text });
+  });
+});

@@ -3,7 +3,7 @@ import type { Mention } from './types';
 
 export type { Mention } from './types';
 
-const RE = /(^|[\s(])@(\S+)/g;
+const RE = /(^|[\s(])@(?:"([^"\n]+)"|'([^'\n]+)'|(\S+))/g;
 
 function resolve(token: string, known: ReadonlySet<string>): Mention | undefined {
   if (known.has(token)) return { kind: 'file', value: token, raw: '' };
@@ -16,12 +16,21 @@ function resolve(token: string, known: ReadonlySet<string>): Mention | undefined
 
 export function parseMentions(text: string, knownFiles: ReadonlySet<string>): { mentions: Mention[]; cleaned: string } {
   const mentions: Mention[] = [];
-  const cleaned = text.replace(RE, (whole, pre: string, rawTok: string) => {
-    const token = rawTok.replace(/[.,;:)!?]+$/, '');
-    const m = token ? resolve(token, knownFiles) : undefined;
-    if (!m) return whole;
-    mentions.push({ ...m, raw: `@${token}` });
-    return `${pre}${token.replace(/^#/, '')}${rawTok.slice(token.length)}`;
-  });
+  const cleaned = text.replace(
+    RE,
+    (whole, pre: string, double: string | undefined, single: string | undefined, bare: string | undefined) => {
+      const quoted = double ?? single;
+      const rawTok = quoted ?? bare ?? '';
+      const token = quoted === undefined ? rawTok.replace(/[.,;:)!?]+$/, '') : rawTok;
+      const m = token ? resolve(token, knownFiles) : undefined;
+      if (!m) return whole;
+      const quote = double !== undefined ? '"' : "'";
+      const raw = quoted === undefined ? `@${token}` : `@${quote}${token}${quote}`;
+      mentions.push({ ...m, raw });
+      return quoted === undefined
+        ? `${pre}${token.replace(/^#/, '')}${rawTok.slice(token.length)}`
+        : `${pre}${quote}${token.replace(/^#/, '')}${quote}`;
+    },
+  );
   return { mentions, cleaned };
 }

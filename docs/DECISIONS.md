@@ -270,3 +270,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-042 — Match fenced blocks by marker and length
 **Context.** The transcript renderer only recognized triple backticks, so tilde blocks and nested fence examples were rendered as prose.
 **Decision.** Track opening marker and length, retaining escaped code until a matching sufficiently long close or stream end.
+
+## D-043 — Quote file mentions containing spaces
+**Context.** Whitespace-delimited mention parsing could not pin indexed files whose paths contained spaces.
+**Decision.** Accept single- or double-quoted paths, resolve the full token, and preserve punctuation and quote characters in the cleaned prompt.

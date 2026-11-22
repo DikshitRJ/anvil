@@ -19,3 +19,5 @@ Parses `@file` and `@symbol` mentions typed in the panel prompt.
 
 **Notes**
 - Symbol mentions are not checked against the index here.
+
+- Single- and double-quoted mentions resolve file paths containing spaces. Mention `raw` retains the quotes; cleaned prose removes only the @ marker and retains surrounding punctuation. Unknown quoted paths stay unchanged.
