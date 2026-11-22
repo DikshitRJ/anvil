@@ -46,7 +46,13 @@ export interface TurnSnapshot {
 export const emptySnapshot = (): TurnSnapshot => ({ messages: new Map(), tools: new Map(), threads: new Map() });
 
 function toolSig(t: ToolCallView): string {
-  return `${t.status}|${t.result?.length ?? -1}|${summarizeTool(t.tool, t.input)}`;
+  return JSON.stringify([
+    t.threadId,
+    t.tool,
+    t.status,
+    t.result?.slice(0, RESULT_PREVIEW),
+    summarizeTool(t.tool, t.input),
+  ]);
 }
 
 function toolMessage(runId: string, t: ToolCallView): HostToWebview {

@@ -113,4 +113,5 @@ Chronological log of major actions, phase outcomes and notable events. Times are
 - Added multiline Python import neighbours, quoted file mentions, and tilde/variable-length transcript code fences.
 - Corrected retrieval result limits, exact-fit windows, TypeScript source import resolution, and class-body chunk coverage.
 - Added deterministic regressions alongside the fixes and expanded edit, retrieval, and review contract coverage.
-- Specification: `openspec/changes/reliability-regressions`; decisions D-026 through D-045.
+- Specification: `openspec/changes/reliability-regressions`; decisions D-026 through D-047.
+- File autocomplete now inserts escaped quoted mentions; tool cards refresh when same-length result text changes.

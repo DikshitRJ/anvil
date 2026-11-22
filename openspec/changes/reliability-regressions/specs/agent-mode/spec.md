@@ -65,3 +65,11 @@ Undo and run rollback requests SHALL execute sequentially in request order, and 
 #### Scenario: Concurrent undo requests
 - **WHEN** two undo operations for successive changes are requested together
 - **THEN** each compares against the preceding completed restore and the file reaches its original content
+
+
+### Requirement: Current tool-result previews
+A tool card SHALL update whenever its visible result preview changes, even if the new text has the same length.
+
+#### Scenario: Same-length replacement
+- **WHEN** a tool result changes from one string to another string of equal length
+- **THEN** the panel receives the new result

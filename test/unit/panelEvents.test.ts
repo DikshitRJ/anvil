@@ -144,3 +144,47 @@ describe('file mention autocomplete round trips', () => {
     },
   );
 });
+
+describe('tool result snapshot comparisons', () => {
+  it('emits a changed preview even when its character count is unchanged', () => {
+    const snapshot = emptySnapshot();
+    const call = {
+      id: 'call',
+      threadId: 'main',
+      tool: 'read_file',
+      input: { path: 'a.ts' },
+      status: 'done' as const,
+      result: 'old text',
+    };
+    diffTurn('run', snapshot, view({ toolCalls: [call] }));
+    expect(diffTurn('run', snapshot, view({ toolCalls: [{ ...call, result: 'new text' }] }))).toEqual([
+      {
+        type: 'tool',
+        runId: 'run',
+        call: {
+          id: 'call',
+          threadId: 'main',
+          tool: 'read_file',
+          summary: 'read_file a.ts',
+          status: 'done',
+          result: 'new text',
+        },
+      },
+    ]);
+  });
+  it('does not send updates for changes beyond the visible preview cap', () => {
+    const snapshot = emptySnapshot();
+    const call = {
+      id: 'call',
+      threadId: 'main',
+      tool: 'read_file',
+      input: {},
+      status: 'done' as const,
+      result: 'x'.repeat(1500) + 'hidden',
+    };
+    diffTurn('run', snapshot, view({ toolCalls: [call] }));
+    expect(
+      diffTurn('run', snapshot, view({ toolCalls: [{ ...call, result: 'x'.repeat(1500) + 'different hidden tail' }] })),
+    ).toEqual([]);
+  });
+});

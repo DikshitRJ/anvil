@@ -286,3 +286,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-046 — Make autocomplete use the same quoted-path contract
 **Context.** The composer inserted bare paths even after quoted file pinning was supported, so suggestions containing spaces still failed.
 **Decision.** Format unsafe paths with JSON quoting and decode escaped quoted mentions before resolution. Plain path suggestions retain their existing syntax.
+
+## D-047 — Compare visible tool results rather than their lengths
+**Context.** Result-length signatures suppressed changed previews when old and new text had equal length.
+**Decision.** Compare a structured signature of the actual rendered fields, capped to the visible preview size.

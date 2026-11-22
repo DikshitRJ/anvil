@@ -25,3 +25,5 @@ Pure (vscode-free) helpers for the panel: turn `TurnView` snapshots into increme
 - No state besides the snapshot passed in, so it is easy to unit test.
 
 - File autocomplete uses `formatFileMention`, making paths with whitespace, quotes, backslashes, or trailing punctuation round-trip through pin parsing.
+
+- Tool snapshot signatures compare the visible result text, thread, tool, status, and summary. Same-length changes are delivered, while changes only beyond the preview cap do not trigger redundant updates.

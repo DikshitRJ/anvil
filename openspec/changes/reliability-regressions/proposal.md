@@ -1,13 +1,17 @@
-# Improve command and retrieval reliability
+# Improve command, session, and retrieval reliability
 
 ## Why
-Commands decode individual byte chunks, which corrupts split UTF-8 sequences. Retrieval boundary cases and index lifecycle operations need dedicated regression coverage.
+Stream decoding, session lifecycle, and incremental retrieval have reproducible edge cases that corrupt output, run the wrong model, retain stale context, or cause false restore conflicts.
 
 ## What Changes
-- Decode stdout and stderr independently across chunk boundaries and settle command completion once.
-- Correct retrieval limits, exact-fit context windows, class gap coverage, and source import resolution as covered by focused regressions.
-- Extend deterministic tests across command lifecycle, indexing, editing, and rendering contracts.
+- Preserve split UTF-8 output and finalize commands once.
+- Reset compaction state, verify model synchronization, and honor cancellation during startup.
+- Fix retrieval limits, exact-fit windows, class gaps, and emitted TypeScript import resolution.
+- Add multiline Python import neighbours, quoted file mentions with autocomplete, and extended Markdown fences.
+- Evict ineligible indexed files, stop disposed health callbacks, isolate queued transcript identities, and refresh changed tool previews.
+- Synchronize undo base snapshots and serialize concurrent checkpoint restores.
+- Add deterministic regression coverage for the changes and existing edit/retrieval contracts.
 
 ## Impact
 - Affected specs: agent-mode, context-assembly.
-- No model calls or new runtime dependencies.
+- No model-provider calls, runtime dependencies, or release tags are added.
