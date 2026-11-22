@@ -298,3 +298,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-049 — Reject inconsistent fuzzy indentation
 **Context.** A live Flask edit matched trimmed lines across a function body and a global declaration, but the declaration had an extra space in the model's old string. First-line-only adjustment produced invalid Python.
 **Decision.** Verify the inferred indentation transformation against every nonblank matched line, including tab/space prefixes. Reject inconsistent matches with actionable read-file guidance; retain exact edits and uniform reindentation.
+
+## D-050 — Align SDK transport limits with long compaction
+**Context.** A live local Qwen compaction was still processing when Node fetch terminated its idle SSE response after five minutes. The SDK timeout was already ten minutes, and retrying cancelled the healthy backend turn.
+**Decision.** Use a dedicated Undici transport for SDK fetch requests that overrides per-dispatch header/body limits to ten minutes. Keep global fetch unchanged, retain abort signals and the session watchdog, and test delayed bodies and explicit cancellation.

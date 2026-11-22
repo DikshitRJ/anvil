@@ -1,8 +1,16 @@
 // TrueForge SDK client factory and a cheap health probe.
 import { TrueForge } from '@truefoundry/trueforge-sdk';
+import { TrueForgeTransport } from './transport';
+
+const transport = new TrueForgeTransport();
 
 export function createClient(baseUrl: string): TrueForge {
-  return new TrueForge({ baseUrl, timeoutInSeconds: 600, maxRetries: 0 });
+  return new TrueForge({
+    baseUrl,
+    timeoutInSeconds: 600,
+    maxRetries: 0,
+    fetch: (input, init) => fetch(input, { ...init, dispatcher: transport } as RequestInit),
+  });
 }
 
 // GET {baseUrl}/healthz; never throws

@@ -127,3 +127,8 @@ Installed Anvil in VS Code and connected the local TrueForge MCP bridge. Found b
 ## 2026-11-22 — Local Qwen transport timeout
 - Diagnosed TrueForge 0.185.1 model header timeouts during local context compaction; the server default is 20 seconds.
 - Documented bounded model header/body timeout overrides separately from the extension's stall watchdog. Verified the running server accepts the overrides.
+
+## 2026-11-22 — Quiet compaction transport
+- Traced a second local-demo interruption to fetch's five-minute idle SSE body limit, independent of the server's model timeout.
+- Added an SDK-only transport with matching ten-minute limits and real HTTP regressions for delayed response bodies and cancellation.
+- Specification: `openspec/changes/preserve-long-compaction-streams`; decision D-050.
