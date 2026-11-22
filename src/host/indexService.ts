@@ -65,9 +65,15 @@ export class IndexService implements vscode.Disposable {
     try {
       const uri = vscode.Uri.file(`${this.root}/${rel}`);
       const stat = await vscode.workspace.fs.stat(uri);
-      if (stat.type !== vscode.FileType.File || stat.size > MAX_BYTES) return;
+      if (stat.type !== vscode.FileType.File || stat.size > MAX_BYTES) {
+        this.index.removeFile(rel);
+        return;
+      }
       const bytes = await vscode.workspace.fs.readFile(uri);
-      if (bytes.includes(0)) return; // binary
+      if (bytes.includes(0)) {
+        this.index.removeFile(rel);
+        return;
+      } // binary
       this.index.updateFile(rel, Buffer.from(bytes).toString('utf8'));
     } catch {
       this.index.removeFile(rel);

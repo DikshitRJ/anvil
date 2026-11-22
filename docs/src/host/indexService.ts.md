@@ -18,3 +18,5 @@ Owns the `CodeIndex`: an initial asynchronous build plus incremental updates fro
 
 **Notes**
 - Searches issued before `ready` see a partial index; callers check `ready`.
+
+- Watched files that become binary, oversized, or non-regular are removed from the index rather than leaving their old text searchable.

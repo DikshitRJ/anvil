@@ -23,3 +23,11 @@ Retrieval SHALL honor nonpositive result limits, use exact-fit line windows, pre
 #### Scenario: Empty file list limit
 - **WHEN** file listing is requested with a nonpositive limit
 - **THEN** it returns no files
+
+
+### Requirement: Incremental index eligibility
+An indexed file SHALL be removed when a watched update makes it binary, oversized, or no longer a regular file.
+
+#### Scenario: Text file becomes binary
+- **WHEN** a previously indexed text file gains binary content
+- **THEN** its old content, symbols, and search results are removed

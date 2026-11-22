@@ -258,3 +258,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-039 — Make health-loop disposal final
 **Context.** A pending health response could invoke recovery after disposal; repeated starts also leaked timers.
 **Decision.** Guard starts and ticks with a disposed flag, suppress late callbacks, and create at most one interval.
+
+## D-040 — Evict files that stop being eligible for indexing
+**Context.** Refresh skipped binary and oversized files but retained their previous text in retrieval.
+**Decision.** Remove all indexed representations when a refreshed path fails the regular-file, size, or binary checks.
