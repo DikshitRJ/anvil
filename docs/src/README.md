@@ -17,7 +17,7 @@ Per-file mirror of `src/**` and `webview/**`. Each page mirrors one source file 
 | [core/config.ts](core/config.ts.md) | Defines the Anvil settings type, defaults, and `mergeConfig` which clamps numeric values. |
 | [core/paths.ts](core/paths.ts.md) | Lexical guard that keeps tool paths inside the workspace (no escape, no NUL). |
 | [core/ledger.ts](core/ledger.ts.md) | Single-use review-approval ledger keyed by run id and a hash of tool and args, 10 minute TTL. |
-| [core/transaction.ts](core/transaction.ts.md) | Checkpoint store that records applied edits for single undo and whole-run revert with conflict detection. |
+| [core/transaction.ts](core/transaction.ts.md) | Checkpoint store that records applied edits for single undo and whole-run revert with conflict detection. Restores run one at a time. |
 | [core/fileList.ts](core/fileList.ts.md) | Filters the indexed file list by directory prefix, glob and limit for `list_files`. |
 
 ## core/diff, core/edits, core/inline
@@ -25,7 +25,7 @@ Per-file mirror of `src/**` and `webview/**`. Each page mirrors one source file 
 | File | Purpose |
 | --- | --- |
 | [core/diff/hunks.ts](core/diff/hunks.ts.md) | Computes change-only line hunks, applies or previews a subset, and summarises hunks (EOL aware). |
-| [core/edits/applyEdit.ts](core/edits/applyEdit.ts.md) | Simulates `write` and `replace` edits on text (exact then whitespace-tolerant match) without touching disk. |
+| [core/edits/applyEdit.ts](core/edits/applyEdit.ts.md) | Simulates `write` and `replace` edits on text (exact then whitespace-tolerant match, rejecting inconsistent indentation) without touching disk. |
 | [core/inline/prompt.ts](core/inline/prompt.ts.md) | Builds the inline-edit prompt and extracts and indents the model's replacement code. |
 
 ## core/agent
@@ -50,7 +50,7 @@ Per-file mirror of `src/**` and `webview/**`. Each page mirrors one source file 
 | [core/context/imports.ts](core/context/imports.ts.md) | Extracts and resolves Python and TS/JS imports for the one-hop import graph. |
 | [core/context/rank.ts](core/context/rank.ts.md) | Weighted Reciprocal Rank Fusion of BM25, symbol, path, editor and neighbour signals. |
 | [core/context/codeIndex.ts](core/context/codeIndex.ts.md) | In-memory index with search, symbol lookup, safe grep, import neighbours and repo map. |
-| [core/context/mentions.ts](core/context/mentions.ts.md) | Parses `@file` and `@symbol` mentions from the prompt. |
+| [core/context/mentions.ts](core/context/mentions.ts.md) | Parses `@file` (bare or quoted) and `@symbol` mentions from the prompt and formats file mentions for autocomplete. |
 | [core/context/assemble.ts](core/context/assemble.ts.md) | Assembles the budgeted context pack (pins, ranked chunks, repo map) and renders `<anvil_context>`. |
 | [core/context/window.ts](core/context/window.ts.md) | Trims an oversized chunk to a line window around the best query matches. |
 
@@ -66,7 +66,8 @@ Per-file mirror of `src/**` and `webview/**`. Each page mirrors one source file 
 
 | File | Purpose |
 | --- | --- |
-| [trueforge/client.ts](trueforge/client.ts.md) | Creates the TrueForge SDK client (no SDK retries) and probes `/healthz`. |
+| [trueforge/client.ts](trueforge/client.ts.md) | Creates the TrueForge SDK client (no SDK retries, dedicated transport) and probes `/healthz`. |
+| [trueforge/transport.ts](trueforge/transport.ts.md) | Undici agent that gives SDK requests the full ten-minute header and body limits, so quiet compaction streams survive. |
 | [trueforge/session.ts](trueforge/session.ts.md) | Runs one request as a TrueForge turn: streaming, stall watchdog, approvals, cancel and model relay. |
 | [trueforge/setup.ts](trueforge/setup.ts.md) | Idempotently registers the MCP server and the agents in TrueForge. |
 | [trueforge/spec.ts](trueforge/spec.ts.md) | Loads agent JSON definitions and converts them to SDK specs. |

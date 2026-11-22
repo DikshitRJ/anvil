@@ -27,7 +27,7 @@ anvil/
       config.ts                   AnvilConfig, DEFAULT_CONFIG, mergeConfig (clamping)
       paths.ts                    resolveInWorkspace, toRelative, PathError
       ledger.ts                   ApprovalLedger, canonicalKey, stableStringify
-      transaction.ts              CheckpointStore: pre-images, undo, revertRun, conflicts
+      transaction.ts              CheckpointStore: pre-images, undo, revertRun, conflicts (restores serialized)
       diff/hunks.ts               computeHunks, applyHunks, previewContent, summarizeHunk
       edits/applyEdit.ts          simulateEdit for search/replace and whole-file writes
       inline/prompt.ts            Inline prompt, fenced-block extraction, indentation matching
@@ -45,9 +45,10 @@ anvil/
         codeIndex.ts              CodeIndex: contents, symbols, chunks, BM25, grep, neighbors, repo map
         rank.ts                   Candidate signals and weighted Reciprocal Rank Fusion
         assemble.ts               Budgeted Context Pack and renderContextPack
-        mentions.ts               Parses @file and @symbol mentions
+        mentions.ts               Parses @file (bare or quoted) and @symbol mentions; formatFileMention for autocomplete
     trueforge/                    The TrueForge client (the only code that talks to TrueForge)
-      client.ts                   SDK factory (retries off) and the /healthz probe
+      client.ts                   SDK factory (retries off, dedicated transport) and the /healthz probe
+      transport.ts                Undici Agent: ten-minute header and body limits for SDK requests only
       spec.ts                     Loads agent JSON, converts to SDK camelCase, sets the model
       setup.ts                    Idempotent registration of the bridge and both agents
       session.ts                  AnvilSession: turns, streaming, approvals, cancel, Model Relay

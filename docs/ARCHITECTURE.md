@@ -125,6 +125,14 @@ stateDiagram-v2
 Stall detection: if no event arrives within `anvil.stallTimeoutSec` (default 120 s; paused while a tool call or a TrueForge compaction is in progress) while the turn runs, the
 attempt is cancelled and classified as transient.
 
+Model synchronisation: before every attempt, `AnvilSession` checks that the session's model matches the relay's current model and
+calls `sessions.update` if not. A failed sync enters the normal retry/fallback path, so no turn runs on a stale spec. Cancellation is
+re-checked after the session is created, so a cancelled run never starts a late turn. Each attempt also clears the compaction flag.
+
+Transport: the SDK client uses a dedicated Undici `Agent` (`src/trueforge/transport.ts`) that sets 10-minute header and body timeouts
+per dispatch. Without it, `fetch` closes quiet SSE streams after five minutes, which interrupts long local-model compaction. Global fetch and the
+`/healthz` probe are unaffected.
+
 ## 4. Context Engine
 
 * **Index** (`CodeIndex`): walks the workspace (respects `.gitignore` and default excludes, skips binaries and
@@ -168,7 +176,7 @@ src/
     context/{tokenize,symbols,chunker,bm25,walker,codeIndex,mentions,assemble}.ts
     agent/{events,toolCalls,fallback}.ts
     ledger.ts  paths.ts  transaction.ts  config.ts
-  trueforge/              SDK client, spec builder, setup/registration, AnvilSession runner
+  trueforge/              SDK client and transport, spec builder, setup/registration, AnvilSession runner
   mcp/                    MCP bridge server + tool definitions (depends on WorkspaceHost/WriteGate interfaces)
   host/                   VS Code adapters: workspaceHost, indexService, reviewController, inlineEdit,
                           checkpoints, commandRunner, statusBar, doctor
@@ -209,6 +217,7 @@ export type EditOp =
 export type EditErrorCode = 'FILE_NOT_FOUND' | 'NOT_FOUND' | 'AMBIGUOUS' | 'NO_CHANGE' | 'INVALID';
 export class EditError extends Error { constructor(public code: EditErrorCode, message: string) }
 // exact match first; then a whitespace-tolerant line match (trimmed lines) if it is unique.
+// The fuzzy match is rejected (NOT_FOUND) when the indentation of old_string is inconsistent with the file.
 export function simulateEdit(current: string | null, op: EditOp): string;
 
 // ---------- core/ledger.ts ----------
@@ -232,7 +241,7 @@ export class CheckpointStore {
   list(): AppliedChange[];
   forRun(runId: string): AppliedChange[];
   undo(seq: number, opts?: { force?: boolean }): Promise<RestoreReport>;      // restores `before` if current === after
-  revertRun(runId: string, opts?: { force?: boolean }): Promise<RestoreReport>; // reverse order, earliest `before` per file
+  revertRun(runId: string, opts?: { force?: boolean }): Promise<RestoreReport>; // reverse order, earliest `before` per file; undo and revertRun share one serial queue
   onChange(listener: () => void): () => void;
 }
 
@@ -267,6 +276,8 @@ export class CodeIndex {
   repoMap(opts?: { maxTokens?: number; focus?: string[] }): string;
 }
 export interface Mention { kind: 'file' | 'symbol'; value: string; raw: string }
+// Quoted forms @"path with spaces" and @'path' are accepted; formatFileMention quotes when a path needs it.
+export function formatFileMention(path: string): string;
 export function parseMentions(text: string, knownFiles: ReadonlySet<string>): { mentions: Mention[]; cleaned: string };
 export interface ContextSignals { query: string; mentions: Mention[]; activeFile?: string; selection?: { path: string; startLine: number; endLine: number; text: string }; openFiles: string[]; recentFiles: string[] }
 export interface ContextItem { path: string; startLine?: number; endLine?: number; kind: 'pinned' | 'selection' | 'symbol' | 'chunk' | 'repo-map'; reason: string; score: number; tokens: number; text: string }

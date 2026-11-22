@@ -54,6 +54,7 @@ Also run `npm run test:vscode` (on Linux, `xvfb-run -a npm run test:vscode`) whe
 | Activation, wiring, commands | `src/extension.ts` |
 | Agent definitions | `agent/anvil-coder.json`, `agent/anvil-inline.json` |
 | TrueForge client, sessions, approvals, cancel | `src/trueforge/client.ts`, `session.ts` |
+| SDK HTTP timeouts (long compaction streams) | `src/trueforge/transport.ts` |
 | Registration of the bridge and agents | `src/trueforge/setup.ts`, `scripts/setup-trueforge.mjs` |
 | Spec loading and SDK camelCase conversion | `src/trueforge/spec.ts` |
 | Model Relay and failure classes | `src/core/agent/fallback.ts` |
