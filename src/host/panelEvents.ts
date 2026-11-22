@@ -1,6 +1,7 @@
 // Pure (vscode-free) helpers for the panel: turn TurnView snapshots into protocol messages, summarise tool calls,
 // and match @-mention queries.
 import type { MessageView, ThreadView, ToolCallView, TurnView } from '../core/agent/events';
+import { formatFileMention } from '../core/context/mentions';
 import type { SymbolInfo } from '../core/context/types';
 import type { HostToWebview } from '../panel/protocol';
 
@@ -133,7 +134,7 @@ export function matchMentions(
     .filter((x) => x.s >= 0)
     .sort((a, b) => a.s - b.s || a.path.length - b.path.length || a.path.localeCompare(b.path))
     .slice(0, limit)
-    .map((x): MentionItem => ({ kind: 'file', label: x.path, detail: 'file', insert: `@${x.path}` }));
+    .map((x): MentionItem => ({ kind: 'file', label: x.path, detail: 'file', insert: formatFileMention(x.path) }));
   const room = limit - ranked.length;
   if (room <= 0 || !query) return ranked;
   const seen = new Set<string>();

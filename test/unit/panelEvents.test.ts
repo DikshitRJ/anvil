@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TurnView } from '../../src/core/agent/events';
+import { parseMentions } from '../../src/core/context/mentions';
 import { CappedOutput } from '../../src/host/cappedOutput';
 import {
   checkTruncation,
@@ -130,4 +131,16 @@ describe('checkTruncation', () => {
     expect(checkTruncation(st, { type: 'model.message' })).toBeUndefined();
     expect(checkTruncation(st, { type: 'model.message', usage: { input_tokens: 10 } })).toContain('only received 10');
   });
+});
+
+describe('file mention autocomplete round trips', () => {
+  it.each(['docs/setup guide.md', 'docs/a "quoted" file.md', "docs/riza's guide.md", 'docs/alert!', 'src/plain.ts'])(
+    'inserts a resolvable mention for %s',
+    (path) => {
+      const item = matchMentions('', [path], () => [])[0]!;
+      expect(parseMentions(item.insert, new Set([path])).mentions).toEqual([
+        { kind: 'file', value: path, raw: item.insert },
+      ]);
+    },
+  );
 });

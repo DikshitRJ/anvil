@@ -202,7 +202,7 @@ How to read it:
 
 ### Agent mode
 
-1. Open the **Anvil** view in the activity bar and type a request. Mention a file with `@path/to/file.py` (a unique path suffix also works). Mention a symbol with `@SymbolName` or `@#SymbolName`.
+1. Open the **Anvil** view in the activity bar and type a request. Mention a file with `@path/to/file.py` (a unique path suffix also works). For paths containing spaces, use `@"docs/setup guide.md"`; autocomplete adds quoting when needed. Mention a symbol with `@SymbolName` or `@#SymbolName`.
 2. Read the Context Inspector card. It lists the files Anvil put in front of the model and why.
 3. Watch the run. Model text streams in, each tool call appears as a card, and each command request shows an approval card (also offered as a VS Code notification).
 4. Each edit opens a review tab. Accept or reject its hunks as in inline edit. The agent receives the outcome as the tool result, including which hunks you rejected, and is told not to re-apply them.

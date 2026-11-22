@@ -282,3 +282,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-045 — Serialize checkpoint restores
 **Context.** Concurrent undo requests read the same initial content and could report false conflicts or race disk writes.
 **Decision.** Queue undo and run rollback operations in request order, retaining per-operation errors while allowing subsequent restores to proceed.
+
+## D-046 — Make autocomplete use the same quoted-path contract
+**Context.** The composer inserted bare paths even after quoted file pinning was supported, so suggestions containing spaces still failed.
+**Decision.** Format unsafe paths with JSON quoting and decode escaped quoted mentions before resolution. Plain path suggestions retain their existing syntax.

@@ -21,3 +21,5 @@ Parses `@file` and `@symbol` mentions typed in the panel prompt.
 - Symbol mentions are not checked against the index here.
 
 - Single- and double-quoted mentions resolve file paths containing spaces. Mention `raw` retains the quotes; cleaned prose removes only the @ marker and retains surrounding punctuation. Unknown quoted paths stay unchanged.
+
+- `formatFileMention` emits plain mentions when safe and JSON-quoted paths otherwise. Double-quoted paths decode JSON escapes; single-quoted paths support escaped quotes and backslashes. Invalid escapes leave the mention untouched.

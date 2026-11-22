@@ -46,3 +46,8 @@ Explicit file pinning SHALL accept single- or double-quoted paths containing spa
 #### Scenario: Path containing spaces
 - **WHEN** the user sends `@"docs/setup guide.md"` for an indexed file
 - **THEN** that exact file is pinned and surrounding punctuation is preserved
+
+
+#### Scenario: Autocomplete for a quoted path
+- **WHEN** a file suggestion contains whitespace or quote characters
+- **THEN** its inserted mention round-trips to the exact indexed path
