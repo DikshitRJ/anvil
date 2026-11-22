@@ -64,3 +64,23 @@ describe('ModelRelay', () => {
     expect(r.current()).toBe('a');
   });
 });
+
+describe('relay policy edge cases', () => {
+  it('uses default backoff when none is provided and resets after a switch', () => {
+    const relay = new ModelRelay({ models: ['first', 'second'], retriesPerModel: 2, backoffMs: [] });
+    expect(relay.onFailure('transient', 'busy')).toEqual({ action: 'retry', model: 'first', delayMs: 500 });
+    expect(relay.onFailure('transient', 'busy')).toEqual({ action: 'retry', model: 'first', delayMs: 1500 });
+    expect(relay.onFailure('transient', 'busy')).toMatchObject({ action: 'switch', model: 'second' });
+    relay.reset();
+    expect(relay.current()).toBe('first');
+    expect(relay.onFailure('transient', 'busy')).toEqual({ action: 'retry', model: 'first', delayMs: 500 });
+  });
+  it('switches without retry when the retry allowance is zero', () => {
+    const relay = new ModelRelay({ models: ['first', 'second'], retriesPerModel: 0, backoffMs: [10] });
+    expect(relay.onFailure('unknown', 'first failure')).toEqual({ action: 'switch', from: 'first', model: 'second' });
+    expect(relay.onFailure('transient', 'last failure')).toEqual({
+      action: 'give-up',
+      reason: 'All configured models failed. Last error: last failure',
+    });
+  });
+});
