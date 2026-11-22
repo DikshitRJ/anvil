@@ -262,3 +262,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-040 — Evict files that stop being eligible for indexing
 **Context.** Refresh skipped binary and oversized files but retained their previous text in retrieval.
 **Decision.** Remove all indexed representations when a refreshed path fails the regular-file, size, or binary checks.
+
+## D-041 — Join Python import continuations before extraction
+**Context.** Common parenthesized imports lost all child-module neighbours because names appeared on later lines.
+**Decision.** Join import statements through parentheses/backslashes and remove comments before the existing name extraction and resolution.

@@ -31,3 +31,18 @@ An indexed file SHALL be removed when a watched update makes it binary, oversize
 #### Scenario: Text file becomes binary
 - **WHEN** a previously indexed text file gains binary content
 - **THEN** its old content, symbols, and search results are removed
+
+
+### Requirement: Multiline Python import neighbours
+The import graph SHALL resolve parenthesized and backslash-continued Python imports, including aliases and inline comments.
+
+#### Scenario: Parenthesized imports
+- **WHEN** imported child modules are listed across several lines
+- **THEN** their indexed sources appear as import neighbours
+
+### Requirement: Quoted file mentions
+Explicit file pinning SHALL accept single- or double-quoted paths containing spaces.
+
+#### Scenario: Path containing spaces
+- **WHEN** the user sends `@"docs/setup guide.md"` for an indexed file
+- **THEN** that exact file is pinned and surrounding punctuation is preserved

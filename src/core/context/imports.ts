@@ -15,9 +15,28 @@ export function extractImports(rel: string, content: string): ImportSpec[] {
   return [];
 }
 
+// Join only import statements; comments and continuation markers are not module names.
+function pythonImportLines(content: string): string[] {
+  const out: string[] = [];
+  let statement = '';
+  let depth = 0;
+  for (const raw of content.split('\n')) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!statement && !/^(?:from|import)\s/.test(line)) continue;
+    statement += ` ${line.replace(/\\$/, '')}`;
+    depth += (line.match(/\(/g)?.length ?? 0) - (line.match(/\)/g)?.length ?? 0);
+    if (depth > 0 || line.endsWith('\\')) continue;
+    out.push(statement);
+    statement = '';
+    depth = 0;
+  }
+  if (statement) out.push(statement);
+  return out;
+}
+
 function pythonImports(content: string): ImportSpec[] {
   const out: ImportSpec[] = [];
-  for (const line of content.split('\n')) {
+  for (const line of pythonImportLines(content)) {
     const f = line.match(/^\s*from\s+(\.*)([\w.]*)\s+import\s+(.+)$/);
     if (f) {
       const names = f[3]!.replace(/[()\\]/g, '').split(',');

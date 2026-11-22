@@ -58,3 +58,23 @@ describe('python import graph contracts', () => {
     expect(extractImports('a.txt', 'import fake')).toEqual([]);
   });
 });
+
+describe('multiline python imports', () => {
+  it('resolves parenthesized names with aliases and inline comments', () => {
+    const source = 'from pkg import (\n    alpha as a, # local alias\n    beta,\n)';
+    expect(resolve('main.py', source, ['pkg/__init__.py', 'pkg/alpha.py', 'pkg/beta.py'])).toEqual([
+      'pkg/__init__.py',
+      'pkg/alpha.py',
+      'pkg/beta.py',
+    ]);
+  });
+  it('resolves backslash-continued module imports', () => {
+    const source = 'import alpha, ' + String.fromCharCode(92) + '\n    beta as b';
+    expect(resolve('main.py', source, ['alpha.py', 'beta.py'])).toEqual(['alpha.py', 'beta.py']);
+  });
+  it('does not treat words in an import comment as modules', () => {
+    expect(resolve('main.py', 'from pkg import alpha # beta', ['pkg/alpha.py', 'pkg/beta.py'])).toEqual([
+      'pkg/alpha.py',
+    ]);
+  });
+});

@@ -24,3 +24,5 @@ Extracts and resolves imports (Python, TS/JS) for the 1-hop import graph.
 - Relative `.js`/`.jsx` imports fall back to `.ts`/`.tsx` source files when the exact indexed path is absent. JavaScript resolution chooses the first existing candidate.
 
 - `.mts` and `.cts` files support import extraction, extensionless/directory lookup, and `.mjs`/`.cjs` source fallback.
+
+- Python import statements may span parenthesized or backslash-continued lines. Inline comments are stripped before extracting module names and aliases. This remains a lightweight import extractor, not a Python parser.
