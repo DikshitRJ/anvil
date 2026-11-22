@@ -317,11 +317,11 @@ Then run `flask config` against a Flask application (set `FLASK_APP` to your app
 
 Anvil is provider-agnostic. It works with whatever models TrueForge is configured with. The models used for the submission are declared in [docs/WRITEUP.md](docs/WRITEUP.md) (section 5). The table below is the summary and summarises it.
 
-| Role     | Model reference | Where it ran | Approx. cost | Used for |
-| -------- | --------------- | ------------ | ------------ | -------- |
-| Primary  | `anvil-local/qwen` (local Qwen via Ollama, OpenAI-compatible) | Local machine, through TrueForge | $0 | Demo Tasks A–C: inline edit, multi-file agent run, failure path |
-| Fallback | `broken/broken-model` (unreachable endpoint), then the scripted mock | TrueForge on CI and Task C | $0 | Clean failure and fallback path; the workspace stays unchanged |
-| Other    | Gemma 4 12B via Ollama | Local RTX 5050 Laptop, 8 GB GPU | $0 | Development QA: Tasks A and C passed; Task B ran the tool loop but 16k context was too small to finish |
+| Role     | Model reference                                                      | Where it ran                     | Approx. cost | Used for                                                                                               |
+| -------- | -------------------------------------------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| Primary  | `anvil-local/qwen` (local Qwen via Ollama, OpenAI-compatible)        | Local machine, through TrueForge | $0           | Demo Tasks A–C: inline edit, multi-file agent run, failure path                                        |
+| Fallback | `broken/broken-model` (unreachable endpoint), then the scripted mock | TrueForge on CI and Task C       | $0           | Clean failure and fallback path; the workspace stays unchanged                                         |
+| Other    | Gemma 4 12B via Ollama                                               | Local RTX 5050 Laptop, 8 GB GPU  | $0           | Development QA: Tasks A and C passed; Task B ran the tool loop but 16k context was too small to finish |
 
 ## Development
 
