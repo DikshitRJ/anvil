@@ -5,8 +5,6 @@ An editor-native coding agent for VS Code whose agent loop runs on [TrueForge](h
 [![CI](https://github.com/DikshitRJ/anvil/actions/workflows/ci.yml/badge.svg)](https://github.com/DikshitRJ/anvil/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> Status: pre-release (`0.1.0`). Install from source or from a `.vsix` attached to a GitHub Release. Anvil is not published to the VS Code Marketplace.
-
 TrueForge is the furnace: it runs the loop, streaming, sessions and approvals. Anvil decides what the model sees and how safely its changes land in your editor.
 
 Anvil is an independent project built for the TrueFoundry Forge-a-thon. It is not an official TrueFoundry product.
