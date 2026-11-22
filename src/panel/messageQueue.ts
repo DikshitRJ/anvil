@@ -11,7 +11,13 @@ export function enqueue(
   max = MAX_QUEUE,
 ): HostToWebview[] {
   const out = queue.slice();
-  const i = msg.type === 'text' ? out.findIndex((m) => m.type === 'text' && m.messageId === msg.messageId) : -1;
+  const i =
+    msg.type === 'text'
+      ? out.findIndex(
+          (m) =>
+            m.type === 'text' && m.runId === msg.runId && m.threadId === msg.threadId && m.messageId === msg.messageId,
+        )
+      : -1;
   if (i >= 0) out[i] = msg;
   else out.push(msg);
   while (out.length > max) {

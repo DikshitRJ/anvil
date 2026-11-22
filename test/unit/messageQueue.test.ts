@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { enqueue } from '../../src/panel/messageQueue';
 import type { HostToWebview } from '../../src/panel/protocol';
 
-const text = (id: string, content: string): HostToWebview => ({
+const text = (id: string, content: string): Extract<HostToWebview, { type: 'text' }> => ({
   type: 'text',
   runId: 'r',
   messageId: id,
@@ -26,5 +26,20 @@ describe('enqueue', () => {
     expect(q).toHaveLength(3);
     expect(q[0]).toBe(health);
     expect(q.slice(1).map((m) => (m.type === 'text' ? m.messageId : ''))).toEqual(['m3', 'm4']);
+  });
+});
+
+describe('queued text identity', () => {
+  it('does not replace another run or thread with the same message identifier', () => {
+    const first = text('shared', 'first run');
+    const second: HostToWebview = { ...text('shared', 'second run'), runId: 'other' };
+    const child: HostToWebview = { ...text('shared', 'child thread'), threadId: 'child' };
+    const queue = enqueue(enqueue([first], second), child);
+    expect(queue).toEqual([first, second, child]);
+    expect(enqueue(queue, { ...second, content: 'updated' })).toEqual([
+      first,
+      { ...second, content: 'updated' },
+      child,
+    ]);
   });
 });

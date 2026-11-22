@@ -18,3 +18,5 @@ Pure helper for the panel's outbound queue: coalesces text snapshots per `messag
 
 **Notes**
 - `PanelProvider` passes `init`, `health`, `changes` as essential.
+
+- Text coalescing uses run, thread, and message identifiers together. Reused message IDs cannot overwrite queued transcript content belonging to another run or subagent.

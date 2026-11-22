@@ -250,3 +250,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-037 — Recheck cancellation after session creation
 **Context.** Cancellation while a session was being allocated could still dispatch a model turn once allocation completed.
 **Decision.** Return a cancelled outcome before creating the turn when the pending run was cancelled.
+
+## D-038 — Scope queued text identity to its run and thread
+**Context.** The ready-gated queue coalesced on message ID alone, discarding unrelated transcript snapshots when IDs repeated.
+**Decision.** Match runId, threadId, and messageId together before replacing a queued text snapshot.

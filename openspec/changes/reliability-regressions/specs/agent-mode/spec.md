@@ -34,3 +34,18 @@ Each attempt SHALL reset transient compaction state, synchronize its configured 
 #### Scenario: Cancel while creating a session
 - **WHEN** cancellation arrives before session creation finishes
 - **THEN** no turn starts after creation completes
+
+
+### Requirement: Panel message isolation
+Queued text snapshots SHALL be coalesced only within the same run, thread, and message identity.
+
+#### Scenario: Reused message identifier
+- **WHEN** separate runs or threads reuse a message identifier while the panel is loading
+- **THEN** both snapshots remain queued
+
+### Requirement: Health polling lifecycle
+Disposed health polling SHALL stop producing callbacks and repeated starts SHALL not create duplicate timers.
+
+#### Scenario: Dispose during health request
+- **WHEN** an in-flight health check completes after disposal
+- **THEN** no status or recovery callback fires
