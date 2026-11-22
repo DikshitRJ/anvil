@@ -125,7 +125,7 @@ render reducers using jsdom-free string rendering.
 runs when `test/e2e` exists). `.github/workflows/build.yml` (vsce package, upload artifact, release on `v*` tags).
 `scripts/setup-trueforge.mjs` (reads `config/trueforge.local.json`, expands `${ENV}` values, PUTs providers, MCP
 server and agents via the SDK). `scripts/demo/setup-flask.sh` (clone pallets/flask, check out 3.1.3, venv,
-`pip install -e . pytest`). `.github/dependabot.yml`, PR template, issue templates.
+`pip install -e ".[dotenv]" pytest==9.0.2`; Flask 3.1.3 needs pytest below 9.2). `.github/dependabot.yml`, PR template, issue templates.
 
 ## 4. Phase 3 — Integration (`feat/host-integration`, Sonnet)
 Files: `src/host/{workspaceHost,indexService,reviewController,inlineEdit,checkpoints,commandRunner,statusBar,doctor,runController}.ts`,

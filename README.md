@@ -283,7 +283,7 @@ All settings use the `anvil.` prefix. Numeric values are clamped to sane ranges 
 The Forge-a-thon demo uses one repository for every team: pallets/flask at tag `3.1.3` (commit `22d92470`). Prepare it with:
 
 ```bash
-scripts/demo/setup-flask.sh          # clones into $HOME/anvil-demo/flask, checks out 3.1.3, creates .venv
+scripts/demo/setup-flask.sh          # clones into $HOME/anvil-demo/flask, checks out 3.1.3, creates .venv, installs Flask (with dotenv) and pytest 9.0.2
 scripts/demo/reset-flask.sh -y       # discards changes between takes
 ```
 
