@@ -105,3 +105,12 @@ Chronological log of major actions, phase outcomes and notable events. Times are
   → TrueForge's context-relative default, 250-line reads (#64, D-025); stall watchdog fired during compaction →
   paused while compacting, 120 s default (#65); Stop button disabled during runs (#66); stale summary lens (#67).
 - Releases: v0.1.3, v0.1.4, v0.1.5 (each verified locally from GitHub Releases).
+
+
+## 2026-11-22 — Reliability and retrieval improvements
+- Fixed command UTF-8 decoding and duplicate completion, stale compaction state, model synchronization failures, and late turn creation after cancellation.
+- Fixed stale index eligibility, queue identity collisions, disposed health callbacks, and undo/base-snapshot and concurrent-restore failures.
+- Added multiline Python import neighbours, quoted file mentions, and tilde/variable-length transcript code fences.
+- Corrected retrieval result limits, exact-fit windows, TypeScript source import resolution, and class-body chunk coverage.
+- Added deterministic regressions alongside the fixes and expanded edit, retrieval, and review contract coverage.
+- Specification: `openspec/changes/reliability-regressions`; decisions D-026 through D-045.

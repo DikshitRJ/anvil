@@ -278,3 +278,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-044 — Refresh retained expectations on every undo
 **Context.** Updating a base only after the final visible undo entry was removed still failed if older entries were evicted later.
 **Decision.** Record the restored content after every successful undo, including null for deletion. Remove a fully restored base only when its visible history is exhausted.
+
+## D-045 — Serialize checkpoint restores
+**Context.** Concurrent undo requests read the same initial content and could report false conflicts or race disk writes.
+**Decision.** Queue undo and run rollback operations in request order, retaining per-operation errors while allowing subsequent restores to proceed.

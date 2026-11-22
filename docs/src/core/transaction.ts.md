@@ -28,3 +28,5 @@ Checkpoint store that records every applied edit so a single change or a whole r
 - When undo removes the last retained entry for a path, it updates the base snapshot expectation or removes an already-restored base. Later cancellation can still restore earlier evicted changes without a false conflict.
 
 - Every successful undo refreshes the retained expected content, even while older visible entries remain, so later history eviction cannot revive a stale expectation. The expectation can also represent a removed file.
+
+- Undo and run restoration share a serial promise queue. Concurrent requests observe completed prior restores, and rejected storage operations do not poison the queue.

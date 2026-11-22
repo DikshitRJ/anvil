@@ -57,3 +57,11 @@ Markdown rendering SHALL support backtick and tilde fences of three or more mark
 #### Scenario: Nested shorter fence
 - **WHEN** a four-backtick block contains a three-backtick example
 - **THEN** the inner fence remains literal code until the outer fence closes
+
+
+### Requirement: Ordered checkpoint restoration
+Undo and run rollback requests SHALL execute sequentially in request order, and a failed restore SHALL not block later requests.
+
+#### Scenario: Concurrent undo requests
+- **WHEN** two undo operations for successive changes are requested together
+- **THEN** each compares against the preceding completed restore and the file reaches its original content

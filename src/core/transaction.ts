@@ -23,6 +23,7 @@ export interface RestoreReport {
 export class CheckpointStore {
   private entries: AppliedChange[] = [];
   private nextSeq = 1;
+  private restores: Promise<unknown> = Promise.resolve();
   // first `before` per path per run; survives undo-list eviction so revertRun restores the true base
   private bases = new Map<string, Map<string, { before: string | null; lastAfter: string | null }>>();
   private listeners = new Set<() => void>();
@@ -67,8 +68,22 @@ export class CheckpointStore {
     for (const l of [...this.listeners]) l();
   }
 
+  private serializeRestore(operation: () => Promise<RestoreReport>): Promise<RestoreReport> {
+    const result = this.restores.then(operation);
+    this.restores = result.catch(() => undefined);
+    return result;
+  }
+
+  undo(seq: number, opts?: { force?: boolean }): Promise<RestoreReport> {
+    return this.serializeRestore(() => this.undoChange(seq, opts));
+  }
+
+  revertRun(runId: string, opts?: { force?: boolean }): Promise<RestoreReport> {
+    return this.serializeRestore(() => this.restoreRun(runId, opts));
+  }
+
   // restores `before` if current === after
-  async undo(seq: number, opts?: { force?: boolean }): Promise<RestoreReport> {
+  private async undoChange(seq: number, opts?: { force?: boolean }): Promise<RestoreReport> {
     const report: RestoreReport = { restored: [], conflicts: [] };
     const e = this.entries.find((x) => x.seq === seq);
     if (!e) return report;
@@ -94,7 +109,7 @@ export class CheckpointStore {
   }
 
   // reverse order, earliest `before` per file
-  async revertRun(runId: string, opts?: { force?: boolean }): Promise<RestoreReport> {
+  private async restoreRun(runId: string, opts?: { force?: boolean }): Promise<RestoreReport> {
     const report: RestoreReport = { restored: [], conflicts: [] };
     const byPath = new Map<string, AppliedChange[]>();
     for (const e of this.forRun(runId).reverse()) {

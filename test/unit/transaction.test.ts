@@ -264,3 +264,32 @@ describe('undo expectations surviving later eviction', () => {
     expect(fs.files.get('a')).toBe('original');
   });
 });
+
+describe('concurrent checkpoint restores', () => {
+  it('serializes successive undos so the second sees the first restored state', async () => {
+    const { fs, cp } = setup();
+    const first = rec(cp, 'r', 'a', 'original', 'middle');
+    const second = rec(cp, 'r', 'a', 'middle', 'latest');
+    fs.files.set('a', 'latest');
+    const reports = await Promise.all([cp.undo(second.seq), cp.undo(first.seq)]);
+    expect(reports).toEqual([
+      { restored: ['a'], conflicts: [] },
+      { restored: ['a'], conflicts: [] },
+    ]);
+    expect(fs.files.get('a')).toBe('original');
+    expect(cp.list()).toEqual([]);
+  });
+  it('continues processing after an earlier restore fails', async () => {
+    const { fs, cp } = setup();
+    const first = rec(cp, 'r1', 'a', 'a0', 'a1');
+    const second = rec(cp, 'r2', 'b', 'b0', 'b1');
+    fs.files.set('a', 'a1');
+    fs.files.set('b', 'b1');
+    vi.spyOn(fs, 'write').mockRejectedValueOnce(new Error('disk busy'));
+    const results = await Promise.allSettled([cp.undo(first.seq), cp.undo(second.seq)]);
+    expect(results[0]?.status).toBe('rejected');
+    expect(results[1]).toEqual({ status: 'fulfilled', value: { restored: ['b'], conflicts: [] } });
+    expect(fs.files.get('b')).toBe('b0');
+    expect(cp.list().map((entry) => entry.path)).toEqual(['a']);
+  });
+});
