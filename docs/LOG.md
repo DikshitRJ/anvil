@@ -123,3 +123,7 @@ Installed Anvil in VS Code and connected the local TrueForge MCP bridge. Found b
 - Reproduced an invalid Python global declaration during the local Qwen Flask demo.
 - Added a consistency guard across fuzzy-matched lines and regressions covering the Python case, uniform documentation indentation, and mixed tabs/spaces.
 - Specification: `openspec/changes/reject-inconsistent-edit-indentation`; decision D-049.
+
+## 2026-11-22 — Local Qwen transport timeout
+- Diagnosed TrueForge 0.185.1 model header timeouts during local context compaction; the server default is 20 seconds.
+- Documented bounded model header/body timeout overrides separately from the extension's stall watchdog. Verified the running server accepts the overrides.

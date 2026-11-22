@@ -229,6 +229,16 @@ PARAMETER num_ctx 16384
 
 Run `ollama create qwen2.5-coder-16k -f Modelfile` and point TrueForge at the new model, or set `OLLAMA_CONTEXT_LENGTH=16384` before starting Ollama. Keep `anvil.contextBudget` well below the window, because the system prompt, tool schemas and history share it. For a 4096-token window, use a budget of about 2000.
 
+For slow local prefill or context compaction, start TrueForge with a longer model HTTP timeout. TrueForge 0.185.1 defaults to a 20-second response-header timeout, which can fail before a local model produces its first token:
+
+```sh
+HOST=localhost OUTBOUND_URL_ALLOWED_HOSTS='["127.0.0.1","localhost"]' \
+MODEL_HTTP_HEADERS_TIMEOUT_MS=600000 MODEL_HTTP_BODY_TIMEOUT_MS=600000 \
+npx @truefoundry/trueforge@latest
+```
+
+These settings belong to the TrueForge server process; increasing `anvil.stallTimeoutSec` alone does not change them. Use a bounded timeout appropriate to the machine, and keep the provider's declared context length consistent with the actual Ollama `num_ctx`.
+
 > **Measured on this project:** Gemma 4 12B via Ollama (8 GB GPU) completes the inline edit (Task A) and the resilience task (Task C) end to end, and drives the full agent tool loop, but at 16k context it cannot finish the three-file agent change (Task B). Use a stronger hosted model (or a larger local one with ≥32k context) for agent-mode work.
 
 ### Switching models
