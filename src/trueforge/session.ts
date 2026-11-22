@@ -184,6 +184,7 @@ export class AnvilSession {
         if (error) return this.failTurn(error);
       }
       const sid = await this.ensureSession();
+      if (this.cancelled) return { kind: 'cancelled' };
       const turn = this.opts.client.sessions.createTurnStream(
         sid,
         { input: [{ type: 'user.message', content: input }] },

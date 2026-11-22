@@ -246,3 +246,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-036 — Synchronize the model before every attempt
 **Context.** Failed model updates could be retried by starting a turn under the previous model while reporting the requested model.
 **Decision.** Perform required synchronization inside each attempt; propagate update failures through the relay before creating a turn.
+
+## D-037 — Recheck cancellation after session creation
+**Context.** Cancellation while a session was being allocated could still dispatch a model turn once allocation completed.
+**Decision.** Return a cancelled outcome before creating the turn when the pending run was cancelled.

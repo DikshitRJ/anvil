@@ -30,3 +30,5 @@ Runs one user request as a TrueForge turn: streams events, answers approval and 
 - Every new attempt resets compaction state so cancellation during compaction cannot disable the stall watchdog for later turns.
 
 - Before starting any turn, the session model must match the relay model. Failed synchronization enters normal retry/fallback handling; no turn runs under the stale specification.
+
+- Cancellation is checked again after asynchronous session creation, preventing a late-created session from starting an unwanted turn.
