@@ -254,3 +254,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-038 — Scope queued text identity to its run and thread
 **Context.** The ready-gated queue coalesced on message ID alone, discarding unrelated transcript snapshots when IDs repeated.
 **Decision.** Match runId, threadId, and messageId together before replacing a queued text snapshot.
+
+## D-039 — Make health-loop disposal final
+**Context.** A pending health response could invoke recovery after disposal; repeated starts also leaked timers.
+**Decision.** Guard starts and ticks with a disposed flag, suppress late callbacks, and create at most one interval.

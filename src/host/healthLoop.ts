@@ -5,6 +5,7 @@ export class HealthLoop implements vscode.Disposable {
   private timer: NodeJS.Timeout | undefined;
   private state: 'ok' | 'down' | 'unknown' = 'unknown';
   private busy = false;
+  private disposed = false;
 
   constructor(
     private readonly check: () => Promise<boolean>,
@@ -18,16 +19,18 @@ export class HealthLoop implements vscode.Disposable {
   }
 
   start(): void {
+    if (this.disposed || this.timer) return;
     void this.tick();
     this.timer = setInterval(() => void this.tick(), this.intervalMs);
   }
 
   /** Check now, e.g. after the TrueForge URL setting changed. */
   async tick(): Promise<void> {
-    if (this.busy) return;
+    if (this.disposed || this.busy) return;
     this.busy = true;
     try {
       const ok = await this.check().catch(() => false);
+      if (this.disposed) return;
       const next = ok ? 'ok' : 'down';
       const wasUp = this.state === 'ok';
       this.state = next;
@@ -39,6 +42,7 @@ export class HealthLoop implements vscode.Disposable {
   }
 
   dispose(): void {
+    this.disposed = true;
     clearInterval(this.timer);
   }
 }

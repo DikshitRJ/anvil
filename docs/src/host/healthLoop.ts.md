@@ -18,3 +18,5 @@ Polls TrueForge health and reports transitions.
 
 **Notes**
 - Timer errors are swallowed by `void`; nothing is retried beyond the next interval.
+
+- Starts are idempotent. Disposal permanently prevents new ticks and suppresses callbacks from already pending checks, including recovery registration.
