@@ -118,3 +118,8 @@ Chronological log of major actions, phase outcomes and notable events. Times are
 
 ## 2026-11-22 — Live demo setup compatibility
 Installed Anvil in VS Code and connected the local TrueForge MCP bridge. Found baseline Flask CLI collection failure with pytest 9.2.0. Pinning pytest 9.0.2 and installing dotenv restored all 58 baseline CLI tests on Python 3.14. Live tasks A/B/C remain unverified at this stage.
+
+## 2026-11-22 — Fuzzy edit indentation safety
+- Reproduced an invalid Python global declaration during the local Qwen Flask demo.
+- Added a consistency guard across fuzzy-matched lines and regressions covering the Python case, uniform documentation indentation, and mixed tabs/spaces.
+- Specification: `openspec/changes/reject-inconsistent-edit-indentation`; decision D-049.

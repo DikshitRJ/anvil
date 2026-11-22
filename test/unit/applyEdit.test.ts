@@ -84,6 +84,24 @@ describe('literal replacement payloads', () => {
 });
 
 describe('fuzzy indentation boundaries', () => {
+  it('rejects inconsistent indentation across a Python function and global anchor', () => {
+    const current = '    for row in rows:\n        show(row)\n\ncli = FlaskGroup(';
+    const old = '    for row in rows:\n        show(row)\n\n cli = FlaskGroup(';
+    expect(() => rep(current, old, old.replace('cli =', 'config ='))).toThrow(/indentation is inconsistent.*read_file/);
+    expect(code(() => rep(current, old, 'replacement'))).toBe('NOT_FOUND');
+  });
+  it('rejects a dedent that would clamp only some old lines', () => {
+    expect(code(() => rep('  first\nsecond', '    first\n second', '    changed\n other'))).toBe('NOT_FOUND');
+  });
+  it('still accepts a uniformly over-indented documentation block', () => {
+    expect(
+      rep('Heading\n-------\n\nbody', ' Heading\n -------\n \n body', ' New heading\n -----------\n \n text'),
+    ).toBe('New heading\n-----------\n \ntext');
+  });
+  it('rejects inconsistent tabs and spaces even when their lengths match', () => {
+    expect(code(() => rep('\tfirst\n second', ' first\n second ', ' changed\n other'))).toBe('NOT_FOUND');
+  });
+
   it('preserves tab-indented context while adding relative indentation', () => {
     expect(rep('outer\n\told\n\tvalue\nend', 'old\nvalue', 'new\n  nested')).toBe('outer\n\tnew\n\t  nested\nend');
   });

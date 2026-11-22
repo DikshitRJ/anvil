@@ -71,6 +71,20 @@ function fuzzyReplace(current: string, eol: string, op: ReplaceOp): string {
   const curIndent = indentOf(cur[at] ?? '');
   const delta = curIndent.length - indentOf(oldLines[0] ?? '').length;
   const unit = curIndent.startsWith('\t') ? '\t' : ' ';
+  const alignedOld = reindent(oldLines, delta, unit);
+  if (
+    oldLines.some(
+      (line, index) =>
+        line.trim() !== '' &&
+        (indentOf(cur[at + index] ?? '').length - indentOf(line).length !== delta ||
+          indentOf(alignedOld[index] ?? '') !== indentOf(cur[at + index] ?? '')),
+    )
+  ) {
+    throw new EditError(
+      'NOT_FOUND',
+      'old_string indentation is inconsistent with the file; read_file the region first and use its exact indentation.',
+    );
+  }
   const newLines = reindent(stripBlankEnds(toLf(op.newString).split('\n')), delta, unit);
   return [...cur.slice(0, at), ...newLines, ...cur.slice(at + oldLines.length)].join(eol);
 }

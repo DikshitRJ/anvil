@@ -294,3 +294,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-048 — Pin the Flask demo test runner
 **Context.** A clean live-demo setup installed pytest 9.2.0, which cannot collect Flask 3.1.3 CLI tests.
 **Decision.** Use pytest 9.0.2 from the pinned Flask lockfile and install the dotenv extra. This scopes compatibility to the demo environment.
+
+## D-049 — Reject inconsistent fuzzy indentation
+**Context.** A live Flask edit matched trimmed lines across a function body and a global declaration, but the declaration had an extra space in the model's old string. First-line-only adjustment produced invalid Python.
+**Decision.** Verify the inferred indentation transformation against every nonblank matched line, including tab/space prefixes. Reject inconsistent matches with actionable read-file guidance; retain exact edits and uniform reindentation.
