@@ -20,3 +20,5 @@ Tiny safe markdown renderer for assistant text.
 
 **Notes**
 - Because it is re-run on every streamed snapshot, it is stateless and fast.
+
+- Supports backtick and tilde fences with at least three markers and up to three leading spaces. Only the same marker with at least the opening length closes a block; shorter/mismatched fences remain literal escaped code.

@@ -49,3 +49,11 @@ Disposed health polling SHALL stop producing callbacks and repeated starts SHALL
 #### Scenario: Dispose during health request
 - **WHEN** an in-flight health check completes after disposal
 - **THEN** no status or recovery callback fires
+
+
+### Requirement: Streamed fenced code blocks
+Markdown rendering SHALL support backtick and tilde fences of three or more markers, closing only on matching markers of sufficient length.
+
+#### Scenario: Nested shorter fence
+- **WHEN** a four-backtick block contains a three-backtick example
+- **THEN** the inner fence remains literal code until the outer fence closes

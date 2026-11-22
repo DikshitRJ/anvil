@@ -53,3 +53,20 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown('`a` \uE0000\uE000')).toBe('<p><code>a</code> 0</p>');
   });
 });
+
+describe('extended code fences', () => {
+  it('renders tilde-fenced code and escapes its body', () => {
+    expect(renderMarkdown('~~~html\n<div>safe</div>\n~~~')).toBe(
+      '<pre><code class="lang-html">&lt;div&gt;safe&lt;/div&gt;</code></pre>',
+    );
+  });
+  it('keeps shorter or mismatched fences literal inside longer fences', () => {
+    expect(renderMarkdown('````md\n```\n~~~\n````')).toBe('<pre><code class="lang-md">```\n~~~</code></pre>');
+  });
+  it('handles indented and unterminated fences during streaming', () => {
+    expect(renderMarkdown('  ~~~~ts\nconst value = 1;')).toBe(
+      '<pre><code class="lang-ts">const value = 1;</code></pre>',
+    );
+    expect(renderMarkdown('~~~\nbody\n~~~~\nafter')).toBe('<pre><code>body</code></pre><p>after</p>');
+  });
+});

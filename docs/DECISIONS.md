@@ -266,3 +266,7 @@ context length. `read_file` returns 250-line windows (16 KB cap) by default; the
 ## D-041 — Join Python import continuations before extraction
 **Context.** Common parenthesized imports lost all child-module neighbours because names appeared on later lines.
 **Decision.** Join import statements through parentheses/backslashes and remove comments before the existing name extraction and resolution.
+
+## D-042 — Match fenced blocks by marker and length
+**Context.** The transcript renderer only recognized triple backticks, so tilde blocks and nested fence examples were rendered as prose.
+**Decision.** Track opening marker and length, retaining escaped code until a matching sufficiently long close or stream end.

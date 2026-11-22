@@ -23,7 +23,7 @@ function inline(text: string): string {
   return out.replace(/\uE000(\d+)\uE000/g, (_m, i: string) => codes[Number(i)] ?? '');
 }
 
-const FENCE = /^```\s*([\w+#.-]*)\s*$/;
+const FENCE = /^ {0,3}(`{3,}|~{3,})\s*([\w+#.-]*)\s*$/;
 const HEADING = /^(#{1,3})\s+(.*)$/;
 const UL = /^\s*[-*+]\s+(.*)$/;
 const OL = /^\s*\d+[.)]\s+(.*)$/;
@@ -62,17 +62,18 @@ function paragraph(lines: string[], start: number): [string, number] {
   return [`<p>${parts.join('<br>')}</p>`, i];
 }
 
-function fence(lines: string[], start: number, lang: string): [string, number] {
+function fence(lines: string[], start: number, lang: string, marker: string): [string, number] {
+  const close = new RegExp(`^ {0,3}${marker[0]}{${marker.length},}\\s*$`);
   const body: string[] = [];
   let i = start + 1;
-  while (i < lines.length && !/^```\s*$/.test(lines[i] ?? '')) body.push(lines[i++] ?? '');
+  while (i < lines.length && !close.test(lines[i] ?? '')) body.push(lines[i++] ?? '');
   return [codeBlock(lang, body), i + 1]; // unterminated fence (streaming) just ends the block
 }
 
 function block(lines: string[], i: number): [string, number] {
   const line = lines[i] ?? '';
   const f = FENCE.exec(line);
-  if (f) return fence(lines, i, f[1] ?? '');
+  if (f) return fence(lines, i, f[2] ?? '', f[1]!);
   const h = HEADING.exec(line);
   if (h) {
     const level = (h[1]?.length ?? 1) + 3;
